@@ -11,6 +11,15 @@ const route = useRoute()
 const router = useRouter()
 const syncingRoute = ref(false)
 
+const updatePageTitle = () => {
+  if (store.selectedStop) {
+    const stopName = store.selectedStop.altName || store.selectedStop.displayName
+    document.title = `${stopName} - Prague Departure Board`
+  } else {
+    document.title = 'Prague Departure Board'
+  }
+}
+
 const selectFromRoute = () => {
   if (!store.stopCount) {
     return
@@ -59,6 +68,8 @@ watch(
     } else if (!node && currentParam) {
       router.replace({ name: 'home' })
     }
+
+    updatePageTitle()
   }
 )
 </script>
@@ -94,6 +105,15 @@ watch(
         <DepartureBoard />
       </section>
     </main>
+
+    <footer class="app-footer">
+      <p>
+        Made by
+        <a href="https://berezhnyk.com" target="_blank" rel="noopener noreferrer"
+          >berezhnyk.com</a
+        >
+      </p>
+    </footer>
   </div>
 </template>
 

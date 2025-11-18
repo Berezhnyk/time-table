@@ -515,6 +515,30 @@ input:focus {
   color: rgba(157, 230, 122, 0.7);
 }
 
+.app-footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(157, 230, 122, 0.2);
+  text-align: center;
+  font-size: 0.9rem;
+  color: rgba(157, 230, 122, 0.7);
+}
+
+.app-footer p {
+  margin: 0;
+}
+
+.app-footer a {
+  color: #9de67a;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.app-footer a:hover {
+  color: #d6ffd0;
+  text-decoration: underline;
+}
+
 .fullscreen-shell {
   min-height: 100vh;
   background: radial-gradient(circle, #031003, #010401);

@@ -12,6 +12,15 @@ const router = useRouter()
 const syncing = ref(false)
 const refreshTimer = ref(null)
 
+const updatePageTitle = () => {
+  if (store.selectedStop) {
+    const stopName = store.selectedStop.altName || store.selectedStop.displayName
+    document.title = `${stopName} (Fullscreen) - Prague Departure Board`
+  } else {
+    document.title = 'Prague Departure Board'
+  }
+}
+
 const ensureStops = async () => {
   if (!store.stopCount) {
     await store.fetchStops()
@@ -100,6 +109,8 @@ watch(
     if (node) {
       store.fetchDepartures()
     }
+
+    updatePageTitle()
   }
 )
 </script>
@@ -131,6 +142,15 @@ watch(
     <section class="fullscreen-board">
       <DepartureBoard />
     </section>
+
+    <footer class="app-footer">
+      <p>
+        Made by
+        <a href="https://berezhnyk.com" target="_blank" rel="noopener noreferrer"
+          >berezhnyk.com</a
+        >
+      </p>
+    </footer>
   </div>
 </template>
 
