@@ -6,11 +6,11 @@ const STOP_LIST_URL =
   import.meta.env.VITE_STOPS_API_URL ||
   (import.meta.env.DEV
     ? '/pid-stops/stops/json/stops.json'
-    : 'https://data.pid.cz/stops/json/stops.json')
+    : '/api/pid-stops')
 
 const GOLEMIO_BASE_URL =
   import.meta.env.VITE_GOLEMIO_API_URL ||
-  (import.meta.env.DEV ? '/golemio/v2/pid' : 'https://api.golemio.cz/v2/pid')
+  (import.meta.env.DEV ? '/golemio/v2/pid' : '/api/golemio')
 const GOLEMIO_TOKEN = import.meta.env.VITE_GOLEMIO_API_KEY || ''
 
 const normalizeStopGroups = (groups = []) =>
@@ -229,7 +229,8 @@ export const useTimetableStore = defineStore('timetable', {
         return
       }
 
-      if (!GOLEMIO_TOKEN) {
+      // Only require API key in dev mode (production uses serverless function)
+      if (import.meta.env.DEV && !GOLEMIO_TOKEN) {
         this.departuresError =
           'Missing VITE_GOLEMIO_API_KEY. See README for setup instructions.'
         return
@@ -251,11 +252,17 @@ export const useTimetableStore = defineStore('timetable', {
           params['ids[]'] = this.selectedStop.stopIds
         }
 
+        const headers = {
+          Accept: 'application/json',
+        }
+
+        // Only send API key in dev mode (production uses serverless function)
+        if (import.meta.env.DEV && GOLEMIO_TOKEN) {
+          headers['X-Access-Token'] = GOLEMIO_TOKEN
+        }
+
         const { data } = await axios.get(`${GOLEMIO_BASE_URL}/departureboards`, {
-          headers: {
-            'X-Access-Token': GOLEMIO_TOKEN,
-            Accept: 'application/json',
-          },
+          headers,
           params,
           paramsSerializer: {
             indexes: null,
@@ -272,6 +279,9 @@ export const useTimetableStore = defineStore('timetable', {
         if (error.response?.status === 401) {
           this.departuresError =
             'The provided Golemio API key was rejected. Double-check the token.'
+        } else if (error.response?.status === 500) {
+          this.departuresError =
+            'Server error: Check that GOLEMIO_API_KEY is configured in Vercel.'
         } else {
           this.departuresError =
             error?.message ||

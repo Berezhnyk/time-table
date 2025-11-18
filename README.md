@@ -47,9 +47,30 @@ The PID stop list is hosted on `data.pid.cz` without CORS headers, which means b
 - `/pid-stops/...` → `https://data.pid.cz/...`
 - `/golemio/...` → `https://api.golemio.cz/...`
 
-When running `npm run dev` you do not need to configure anything—requests to both datasets go through the proxy. For production deployments you have two options:
+When running `npm run dev` you do not need to configure anything—requests to both datasets go through the proxy.
 
-1. **Keep using a proxy** (recommended): host the built assets behind a reverse proxy (Nginx, Cloudflare Worker, Netlify function, etc.) that forwards `/pid-stops` and `/golemio` to their respective origins while injecting your API key server-side.
+### Production Deployment (Vercel)
+
+This project includes Vercel serverless functions in the [api/](api/) directory that handle the proxying in production:
+
+- `/api/pid-stops` → `https://data.pid.cz/stops/json/stops.json`
+- `/api/golemio/:path*` → `https://api.golemio.cz/v2/pid/:path*`
+
+**Environment Variables on Vercel:**
+
+You must set the following environment variable in your Vercel project settings:
+
+```
+GOLEMIO_API_KEY=your_token_here
+```
+
+The serverless functions will automatically inject the API key server-side, keeping it secure and avoiding CORS issues.
+
+### Other Production Options
+
+If not using Vercel, you can:
+
+1. **Use a reverse proxy** (Nginx, Cloudflare Worker, Netlify function, etc.) that forwards requests to the PID and Golemio APIs.
 2. **Mirror the stop list**: fetch `https://data.pid.cz/stops/json/stops.json` during your CI/deploy step and serve it from the same origin as the app (the dataset is regenerated each morning around 04:00 CET).
 
 Without one of these approaches the browser will keep throwing CORS errors because the remote servers do not permit direct cross-origin reads.

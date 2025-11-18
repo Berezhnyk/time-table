@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/golemio/:path*",
+      "destination": "/api/golemio"
+    }
+  ]
+}
