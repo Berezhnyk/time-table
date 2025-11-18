@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
+import 'leaflet.markercluster'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta } from '../utils/transport'
 
@@ -9,6 +10,7 @@ const mapElement = ref(null)
 
 let mapInstance
 let markerLayer
+let markers = new Map()
 
 const initMap = () => {
   if (mapInstance || !mapElement.value) {
@@ -31,21 +33,31 @@ const initMap = () => {
     })
     .addTo(mapInstance)
 
-  markerLayer = L.layerGroup().addTo(mapInstance)
+  markerLayer = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    disableClusteringAtZoom: 16,
+  }).addTo(mapInstance)
+
   setTimeout(() => mapInstance.invalidateSize(), 600)
   renderMarkers()
 }
 
-const createMarkerIcon = (stop) => {
+const createMarkerIcon = (stop, isSelected = false) => {
   const meta = getTransportMeta(stop.transportKey || stop.trafficType)
+  const selectedClass = isSelected ? 'transport-marker__dot--selected' : ''
+  const size = isSelected ? 44 : 36
+  const anchor = isSelected ? 22 : 18
   return L.divIcon({
     className: 'transport-marker',
-    html: `<span class="transport-marker__dot" style="--marker-color:${meta.color}">
+    html: `<span class="transport-marker__dot ${selectedClass}" style="--marker-color:${meta.color}">
         ${meta.code}
       </span>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    tooltipAnchor: [0, -18],
+    iconSize: [size, size],
+    iconAnchor: [anchor, anchor],
+    tooltipAnchor: [0, -anchor],
   })
 }
 
@@ -55,15 +67,46 @@ const renderMarkers = () => {
   }
 
   markerLayer.clearLayers()
+  markers.clear()
+
+  console.log('Rendering markers, selected stop:', store.selectedStop?.node)
 
   store.stops.forEach((stop) => {
+    const isSelected = store.selectedStop?.node === stop.node
     const marker = L.marker([stop.lat, stop.lon], {
-      icon: createMarkerIcon(stop),
+      icon: createMarkerIcon(stop, isSelected),
     })
     marker.bindTooltip(stop.displayName, { sticky: true })
     marker.on('click', () => store.selectStop(stop))
     markerLayer.addLayer(marker)
+    markers.set(stop.node, { marker, stop })
   })
+
+  console.log('Total markers rendered:', markers.size)
+}
+
+const highlightSelectedStop = () => {
+  if (!store.selectedStop) {
+    return
+  }
+
+  console.log('Selected stop node:', store.selectedStop.node)
+  let selectedCount = 0
+
+  markers.forEach(({ marker, stop }) => {
+    const isSelected = stop.node === store.selectedStop.node
+    if (isSelected) {
+      console.log('Highlighting stop:', stop.displayName, stop.node)
+      selectedCount++
+    }
+    marker.setIcon(createMarkerIcon(stop, isSelected))
+  })
+
+  console.log('Total selected markers:', selectedCount)
+
+  if (markerLayer) {
+    markerLayer.refreshClusters()
+  }
 }
 
 const focusSelectedStop = () => {
@@ -95,8 +138,9 @@ watch(
 )
 
 watch(
-  () => store.selectedStop?.id,
+  () => store.selectedStop?.node,
   () => {
+    highlightSelectedStop()
     focusSelectedStop()
   }
 )

@@ -1,26 +1,36 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { refDebounced } from '@vueuse/core'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta } from '../utils/transport'
 
 const store = useTimetableStore()
 const router = useRouter()
 const query = ref('')
+const debouncedQuery = refDebounced(query, 250)
+
+const normalize = (text) => {
+  if (!text) return ''
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
 
 const matchesQuery = (stop, needle) => {
   if (!needle) return true
-  const lower = needle.toLowerCase()
+  const normalizedNeedle = normalize(needle)
   return (
-    stop.displayName.toLowerCase().includes(lower) ||
-    stop.altName?.toLowerCase().includes(lower) ||
-    stop.groupName?.toLowerCase().includes(lower) ||
-    stop.municipality?.toLowerCase().includes(lower)
+    normalize(stop.displayName).includes(normalizedNeedle) ||
+    normalize(stop.altName).includes(normalizedNeedle) ||
+    normalize(stop.groupName).includes(normalizedNeedle) ||
+    normalize(stop.municipality).includes(normalizedNeedle)
   )
 }
 
 const groupedStops = computed(() => {
-  const text = query.value.trim()
+  const text = debouncedQuery.value.trim()
   return store.stops
     .filter((groupStop) => matchesQuery(groupStop, text))
     .slice(0, 12)
@@ -114,7 +124,7 @@ const clearSearch = () => {
         </button>
       </li>
       <li v-if="!groupedStops.length" class="status-line">
-        No stop groups match “{{ query }}”.
+        No stop groups match "{{ debouncedQuery }}".
       </li>
     </ul>
   </section>
