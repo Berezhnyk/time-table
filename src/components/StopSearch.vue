@@ -48,6 +48,16 @@ const groupedStops = computed(() => {
 const selectGroup = (group) => {
   store.selectStop(group.stop)
   router.replace({ name: 'home', params: { node: group.stop.node } })
+
+  // Scroll to departure board on mobile
+  if (window.innerWidth <= 1100) {
+    setTimeout(() => {
+      const boardPanel = document.querySelector('.board-panel')
+      if (boardPanel) {
+        boardPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+  }
 }
 
 const clearSearch = () => {

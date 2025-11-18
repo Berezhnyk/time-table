@@ -75,6 +75,17 @@ const openFullscreen = () => {
     return
   }
 
+  // Check if we're on a mobile device or if Fullscreen API is not supported
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  const supportsFullscreen = document.fullscreenEnabled || document.webkitFullscreenEnabled
+
+  // On mobile or when Fullscreen API is not supported, navigate to fullscreen route
+  if (isMobile || !supportsFullscreen) {
+    router.push({ name: 'fullscreen', params: { node: store.selectedStop.node } })
+    return
+  }
+
+  // Try native fullscreen API for desktop
   const element = document.querySelector('.board-panel')
   if (!element) {
     return
