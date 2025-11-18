@@ -82,9 +82,6 @@ watch(
       </div>
       <div class="header-meta">
         <p>Stops loaded: {{ store.stopCount || '—' }}</p>
-        <button class="ghost" type="button" @click="store.fetchStops(true)">
-          Refresh stop list
-        </button>
       </div>
     </header>
 

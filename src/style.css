@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap&subset=latin,latin-ext');
 @import 'leaflet/dist/leaflet.css';
 @import 'leaflet.markercluster/dist/MarkerCluster.css';
 @import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 :root {
-  font-family: 'Space Grotesk', 'Share Tech Mono', 'Courier New', monospace;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.4;
   font-weight: 400;
   color: #9de67a;
@@ -66,7 +66,7 @@ a:hover,
 }
 
 .app-header h1 {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: clamp(2rem, 4vw, 2.8rem);
   color: #d6ffd0;
   margin: 0.2rem 0 0;
@@ -108,7 +108,7 @@ a:hover,
 }
 
 .panel h2 {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   margin: 0.1rem 0 0;
   font-size: 1.4rem;
 }
@@ -147,7 +147,7 @@ input {
   border: 1px solid rgba(157, 230, 122, 0.4);
   background: rgba(0, 0, 0, 0.65);
   color: #d6ffd0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 input:focus {
@@ -161,7 +161,7 @@ input:focus {
   color: #9de67a;
   border-radius: 999px;
   padding: 0.5rem 1.25rem;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
@@ -229,7 +229,7 @@ input:focus {
 
 .group-name {
   margin: 0;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 1.1rem;
 }
 
@@ -251,7 +251,7 @@ input:focus {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 .stop-item:last-child {
@@ -328,7 +328,7 @@ input:focus {
   border-radius: 50%;
   background: radial-gradient(circle, var(--marker-color), rgba(0, 0, 0, 0.9));
   color: #041804;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
@@ -380,7 +380,7 @@ input:focus {
 .marker-cluster-large div {
   background-color: rgba(157, 230, 122, 0.8) !important;
   color: #041804 !important;
-  font-family: 'Share Tech Mono', monospace !important;
+  font-family: 'JetBrains Mono', 'Courier New', monospace !important;
   font-weight: 600 !important;
   border-radius: 50% !important;
 }
@@ -423,7 +423,7 @@ input:focus {
 .board-placeholder {
   padding: 4rem 1.5rem;
   text-align: center;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   color: rgba(157, 230, 122, 0.9);
 }
 
@@ -434,7 +434,7 @@ input:focus {
 .departure-grid {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 .departure-grid th,
@@ -468,14 +468,14 @@ input:focus {
 
 .eta-cell {
   text-align: center;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 .transport-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 0.75rem;
   text-transform: uppercase;
   padding: 0.15rem 0.5rem;
@@ -534,7 +534,7 @@ input:focus {
 
 .fullscreen-header h1 {
   margin: 0.2rem 0 0;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: clamp(1.8rem, 4vw, 2.6rem);
 }
 
@@ -542,6 +542,48 @@ input:focus {
   backdrop-filter: blur(6px);
 }
 
+/* Native fullscreen mode styles */
+.board-panel:fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  border-radius: 0;
+  border: none;
+  overflow: auto;
+}
+
+.board-panel:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  border-radius: 0;
+  border: none;
+  overflow: auto;
+}
+
+.board-panel:-moz-full-screen {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  border-radius: 0;
+  border: none;
+  overflow: auto;
+}
+
+.board-panel:-ms-fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  border-radius: 0;
+  border: none;
+  overflow: auto;
+}
+
+/* Tablet breakpoint */
 @media (max-width: 1100px) {
   .app-main {
     grid-template-columns: 1fr;
@@ -561,5 +603,227 @@ input:focus {
 
   .fullscreen-header {
     flex-direction: column;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .fullscreen-shell {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .app-header {
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .header-meta {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .header-meta button {
+    width: 100%;
+  }
+
+  .input-row {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .input-row input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .input-row button {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 80px;
+  }
+
+  .panel {
+    padding: 0.875rem;
+    border-radius: 12px;
+  }
+
+  .panel h2 {
+    font-size: 1.2rem;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .board-actions {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .board-actions button {
+    flex: 1;
+  }
+
+  .map-container {
+    height: 280px;
+  }
+
+  .stop-list {
+    max-height: 280px;
+  }
+
+  .group-list {
+    max-height: 320px;
+  }
+
+  .board-surface {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .departure-grid {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .departure-grid th,
+  .departure-grid td {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .departure-grid th:first-child,
+  .departure-grid td:first-child {
+    width: auto;
+  }
+
+  /* Hide less critical columns on mobile */
+  .departure-grid th:nth-child(5),
+  .departure-grid td:nth-child(5),
+  .departure-grid th:nth-child(6),
+  .departure-grid td:nth-child(6),
+  .departure-grid th:nth-child(7),
+  .departure-grid td:nth-child(7) {
+    display: none;
+  }
+
+  .line-code {
+    font-size: 0.95rem;
+  }
+
+  .board-footer {
+    font-size: 0.8rem;
+  }
+
+  .fullscreen-header h1 {
+    font-size: 1.6rem;
+  }
+}
+
+/* Small mobile breakpoint */
+@media (max-width: 480px) {
+  .app-shell {
+    padding: 1rem 0.75rem 1.5rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .subtext {
+    font-size: 0.9rem;
+  }
+
+  .eyebrow {
+    font-size: 0.65rem;
+  }
+
+  .panel {
+    padding: 0.75rem;
+  }
+
+  .panel h2 {
+    font-size: 1.1rem;
+  }
+
+  .map-container {
+    height: 240px;
+  }
+
+  .stop-item {
+    padding: 0.75rem 0.75rem;
+  }
+
+  .stop-name {
+    font-size: 0.9rem;
+  }
+
+  .stop-meta,
+  .stop-lines {
+    font-size: 0.8rem;
+  }
+
+  .group-button {
+    padding: 0.875rem;
+  }
+
+  .group-name {
+    font-size: 1rem;
+  }
+
+  .group-meta {
+    font-size: 0.8rem;
+  }
+
+  .departure-grid th,
+  .departure-grid td {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  input {
+    padding: 0.7rem 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .ghost {
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .board-placeholder {
+    padding: 3rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .transport-chip {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+  }
+
+  .stop-name .transport-chip {
+    font-size: 0.6rem;
+  }
+
+  .line-code {
+    font-size: 0.9rem;
+  }
+
+  /* Hide status column on very small screens too */
+  .departure-grid th:nth-child(8),
+  .departure-grid td:nth-child(8) {
+    display: none;
   }
 }

@@ -75,12 +75,18 @@ const openFullscreen = () => {
     return
   }
 
-  const url = router.resolve({
-    name: 'fullscreen',
-    params: { node: store.selectedStop.node },
-  }).href
+  const element = document.querySelector('.board-panel')
+  if (!element) {
+    return
+  }
 
-  window.open(url, '_blank', 'noopener')
+  if (element.requestFullscreen) {
+    element.requestFullscreen()
+  } else if (element.webkitRequestFullscreen) {
+    element.webkitRequestFullscreen()
+  } else if (element.msRequestFullscreen) {
+    element.msRequestFullscreen()
+  }
 }
 
 function formatEta(value) {
@@ -129,14 +135,6 @@ function formatEta(value) {
           @click="refreshBoard"
         >
           Refresh
-        </button>
-        <button
-          class="ghost"
-          type="button"
-          :disabled="!store.hasSelection"
-          @click="store.clearSelection"
-        >
-          Clear stop
         </button>
         <button
           v-if="!isFullscreenRoute"
