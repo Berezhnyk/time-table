@@ -497,8 +497,17 @@ input:focus {
   background: rgba(4, 16, 4, 0.7);
 }
 
-.departure-grid tbody tr:hover {
+.departure-grid tbody tr.departure-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.departure-grid tbody tr.departure-row:hover {
   background: rgba(157, 230, 122, 0.15);
+}
+
+.departure-grid tbody tr.departure-row:active {
+  background: rgba(157, 230, 122, 0.25);
 }
 
 .departure-grid td.delayed {

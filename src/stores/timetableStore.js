@@ -162,11 +162,20 @@ const normalizeDeparture = (raw, fallbackPlatform = '') => {
     raw.trip?.directionName ||
     null
 
+  // Extract GTFS trip ID for vehicle tracking
+  const gtfsTripId =
+    raw.trip?.id ||
+    raw.trip?.gtfs_trip_id ||
+    raw.trip?.gtfs?.trip_id ||
+    raw.gtfs_trip_id ||
+    null
+
   return {
     id:
+      gtfsTripId ||
       raw.id ||
-      raw.trip?.gtfs_trip_id ||
       `${line}-${destination}-${planned || Date.now()}`,
+    gtfsTripId, // Store separately for vehicle tracking
     line,
     destination,
     plannedTime: planned,
@@ -191,6 +200,10 @@ export const useTimetableStore = defineStore('timetable', {
     departuresLoading: false,
     departuresError: null,
     lastUpdated: null,
+    trackedVehicle: null,
+    vehicleLoading: false,
+    vehicleError: null,
+    trackingTarget: null,
   }),
   getters: {
     hasSelection: (state) => Boolean(state.selectedStop),
@@ -290,6 +303,234 @@ export const useTimetableStore = defineStore('timetable', {
       } finally {
         this.departuresLoading = false
       }
+    },
+    async fetchVehiclePosition(tripId) {
+      if (!tripId) {
+        this.vehicleError = 'No trip ID provided'
+        return
+      }
+
+      this.vehicleLoading = true
+      this.vehicleError = null
+
+      try {
+        const headers = {
+          Accept: 'application/json',
+        }
+
+        // Only send API key in dev mode (production uses serverless function)
+        if (import.meta.env.DEV && GOLEMIO_TOKEN) {
+          headers['X-Access-Token'] = GOLEMIO_TOKEN
+        }
+
+        // Get departure info for fallback
+        const targetDeparture = this.trackingTarget || this.departures.find(d => d.id === tripId)
+
+        const params = {
+          includeNotTracking: true,
+        }
+
+        // Try to get specific vehicle by trip ID first
+        let endpoint
+        let path
+
+        if (import.meta.env.DEV) {
+          // In dev, try direct trip ID query first
+          endpoint = `/golemio/v2/vehiclepositions/${encodeURIComponent(tripId)}`
+        } else {
+          // In production, use serverless function with path parameter
+          path = `vehiclepositions/${encodeURIComponent(tripId)}`
+          params.path = path
+          endpoint = '/api/golemio'
+        }
+
+        console.log('Fetching vehicle by trip ID:', tripId)
+
+        let data
+        try {
+          const response = await axios.get(endpoint, {
+            headers,
+            params,
+            paramsSerializer: {
+              indexes: null,
+            },
+            timeout: 15000,
+          })
+          data = response.data
+        } catch (error) {
+          // If direct trip ID query fails, fallback to filtering by route
+          if (error.response?.status === 404 && targetDeparture?.line) {
+            console.log('Trip ID not found, falling back to route filter:', targetDeparture.line)
+
+            const fallbackParams = {
+              routeShortName: targetDeparture.line,
+            }
+
+            if (!import.meta.env.DEV) {
+              fallbackParams.path = 'vehiclepositions'
+            }
+
+            const fallbackEndpoint = import.meta.env.DEV
+              ? '/golemio/v2/vehiclepositions'
+              : '/api/golemio'
+
+            const fallbackResponse = await axios.get(fallbackEndpoint, {
+              headers,
+              params: fallbackParams,
+              paramsSerializer: {
+                indexes: null,
+              },
+              timeout: 15000,
+            })
+            data = fallbackResponse.data
+          } else {
+            throw error
+          }
+        }
+
+        // Handle different response formats
+        let feature = null
+
+        // Check if we got a single feature (direct trip ID query response)
+        if (data?.geometry && data?.properties) {
+          console.log('Got single feature response (direct trip ID match)')
+          feature = data
+        } else {
+          // We got a FeatureCollection (route filter response)
+          const features = data?.features || []
+
+          console.log('Target departure:', targetDeparture)
+          console.log('Total vehicles available:', features.length)
+
+          // Try to find vehicle by matching trip ID in different property locations
+          feature = features.find(f => {
+            const props = f.properties || {}
+            const vehicleTripId =
+              props.trip?.gtfs?.trip_id ||
+              props.trip?.gtfs_trip_id ||
+              props.trip?.id ||
+              props.gtfs_trip_id ||
+              props.trip_id ||
+              null
+
+            if (vehicleTripId === tripId) {
+              console.log('Found exact match by trip ID:', vehicleTripId)
+              return true
+            }
+            return false
+          })
+        }
+
+        // Fallback: If exact trip ID match not found, try matching by line and destination
+        if (!feature && targetDeparture) {
+          console.log('No exact trip ID match, trying line + destination matching...')
+
+          // Also log some vehicle info to debug
+          if (features.length > 0) {
+            const sample = features.slice(0, 3).map(f => ({
+              line: f.properties?.trip?.gtfs?.route_short_name,
+              dest: f.properties?.trip?.gtfs?.trip_headsign,
+            }))
+            console.log('Sample vehicles (first 3):', sample)
+          }
+
+          feature = features.find(f => {
+            const props = f.properties || {}
+            // Try multiple property paths for line and destination
+            const vehicleLine =
+              props.trip?.gtfs?.route_short_name ||
+              props.trip?.route_short_name ||
+              props.route_short_name ||
+              props.trip?.origin_route_name ||
+              ''
+            const vehicleDestination =
+              props.trip?.gtfs?.trip_headsign ||
+              props.trip?.headsign ||
+              props.headsign ||
+              ''
+
+            const matches =
+              vehicleLine === targetDeparture.line &&
+              vehicleDestination === targetDeparture.destination
+
+            if (matches) {
+              console.log('Found match by line + destination:', vehicleLine, vehicleDestination)
+            }
+
+            return matches
+          })
+
+          if (!feature) {
+            console.log('No match found for line:', targetDeparture.line, 'destination:', targetDeparture.destination)
+          }
+        }
+
+        if (!feature) {
+          // Log sample vehicle data to help debug
+          if (features.length > 0) {
+            console.log('Sample vehicle properties:', features[0].properties)
+          }
+
+          // Provide more specific error message
+          const vehicleDesc = targetDeparture
+            ? `Line ${targetDeparture.line} to ${targetDeparture.destination}`
+            : 'This vehicle'
+
+          throw new Error(
+            `${vehicleDesc} is not currently being tracked. The vehicle may not have started its route yet, may have already completed it, or real-time tracking may not be available for this departure.`
+          )
+        }
+
+        const props = feature.properties || {}
+        const coords = feature.geometry?.coordinates || []
+
+        // Normalize vehicle data
+        this.trackedVehicle = {
+          id: tripId,
+          lat: coords[1],
+          lon: coords[0],
+          line:
+            props.trip?.gtfs?.route_short_name ||
+            props.trip?.route_short_name ||
+            props.route_short_name ||
+            props.trip?.origin_route_name ||
+            '—',
+          destination:
+            props.trip?.gtfs?.trip_headsign ||
+            props.trip?.headsign ||
+            props.headsign ||
+            '—',
+          vehicleType: props.trip?.vehicle_type?.description_en || props.vehicle_type,
+          transportKey: resolveTransportKey({
+            routeType: props.trip?.gtfs?.route_type ?? props.trip?.route_type ?? props.route_type,
+            vehicleType: props.trip?.vehicle_type?.description_en || props.vehicle_type,
+          }),
+          speed: props.last_position?.speed,
+          delay: props.last_position?.delay?.actual
+            ? Math.round(props.last_position.delay.actual / 60)
+            : 0,
+          timestamp: props.last_position?.origin_timestamp || new Date().toISOString(),
+          // Include geometry/shape data if available
+          geometry: feature.geometry,
+          routeShape: props.trip?.shape || props.shape || null,
+          nextStop: props.last_position?.next_stop || null,
+          lastStop: props.last_position?.last_stop || null,
+        }
+      } catch (error) {
+        this.vehicleError =
+          error?.message || 'Unable to fetch vehicle position from the Golemio API.'
+        throw error
+      } finally {
+        this.vehicleLoading = false
+      }
+    },
+    clearVehicleTracking() {
+      this.trackedVehicle = null
+      this.vehicleError = null
+      this.trackingTarget = null
+    },
+    setTrackingTarget(target) {
+      this.trackingTarget = target
     },
   },
 })

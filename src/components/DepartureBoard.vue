@@ -115,6 +115,31 @@ function formatEta(value) {
 
   return `${value} min`
 }
+
+const trackVehicle = (departure) => {
+  // Use GTFS trip ID if available, fallback to regular ID
+  const tripId = departure.gtfsTripId || departure.id
+
+  if (!tripId || !store.selectedStop?.node) {
+    return
+  }
+
+  // Store departure info for tracking
+  store.setTrackingTarget({
+    tripId: tripId,
+    line: departure.line,
+    destination: departure.destination,
+  })
+
+  // Navigate to vehicle tracking page with stop context
+  router.push({
+    name: 'track',
+    params: {
+      node: store.selectedStop.node,
+      tripId: tripId
+    }
+  })
+}
 </script>
 
 <template>
@@ -196,7 +221,15 @@ function formatEta(value) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="departure in formattedDepartures" :key="departure.id">
+          <tr
+            v-for="departure in formattedDepartures"
+            :key="departure.id"
+            class="departure-row"
+            @click="trackVehicle(departure)"
+            role="button"
+            tabindex="0"
+            :title="`Track ${departure.line} to ${departure.destination}`"
+          >
             <td>
               <span
                 class="transport-chip"

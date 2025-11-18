@@ -46,8 +46,9 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Cache for 30 seconds (real-time data)
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate');
+    // Cache for 30 seconds for departureboards, 10 seconds for vehiclepositions (more dynamic)
+    const cacheTime = endpoint.includes('vehiclepositions') ? 10 : 30;
+    res.setHeader('Cache-Control', `s-maxage=${cacheTime}, stale-while-revalidate`);
     res.status(200).json(data);
   } catch (error) {
     console.error('Error fetching Golemio data:', error);

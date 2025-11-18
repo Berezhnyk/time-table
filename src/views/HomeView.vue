@@ -64,7 +64,7 @@ watch(
 
     const currentParam = route.params.node
     if (node && String(node) !== String(currentParam || '')) {
-      router.replace({ name: 'home', params: { node } })
+      router.replace({ name: 'stop', params: { node } })
     } else if (!node && currentParam) {
       router.replace({ name: 'home' })
     }

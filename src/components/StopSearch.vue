@@ -47,7 +47,7 @@ const groupedStops = computed(() => {
 
 const selectGroup = (group) => {
   store.selectStop(group.stop)
-  router.replace({ name: 'home', params: { node: group.stop.node } })
+  router.replace({ name: 'stop', params: { node: group.stop.node } })
 
   // Scroll to departure board on mobile
   if (window.innerWidth <= 1100) {
