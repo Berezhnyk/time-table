@@ -34,9 +34,15 @@ const selectFromRoute = () => {
 
   const match = store.stops.find((stop) => String(stop.node) === String(nodeParam))
 
-  if (match && store.selectedStop?.node !== match.node) {
+  if (match) {
     syncingRoute.value = true
-    store.selectStop(match)
+    if (store.selectedStop?.node !== match.node) {
+      // New stop selected, select it and fetch departures
+      store.selectStop(match)
+    } else {
+      // Same stop, but refresh departures (e.g., when navigating back from tracking)
+      store.fetchDepartures()
+    }
     Promise.resolve().then(() => {
       syncingRoute.value = false
     })

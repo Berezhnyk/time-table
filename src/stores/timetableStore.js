@@ -43,6 +43,7 @@ const normalizeStopGroups = (groups = []) =>
         centroid: { lat, lon },
         lines: group.stops.flatMap((stop) => stop.lines || []),
         stopIds: group.stops.map((stop) => stop.id),
+        gtfsIds: group.stops.flatMap((stop) => stop.gtfsIds || []),
         displayName: group.name,
         zone: group.stops[0]?.zone || null,
       }
@@ -190,6 +191,49 @@ const normalizeDeparture = (raw, fallbackPlatform = '') => {
   }
 }
 
+const STOPS_CACHE_KEY = 'timetable_stops_cache'
+const STOPS_CACHE_VERSION = 1
+const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
+
+const loadStopsFromCache = () => {
+  try {
+    const cached = sessionStorage.getItem(STOPS_CACHE_KEY)
+    if (!cached) return null
+
+    const { version, timestamp, data } = JSON.parse(cached)
+
+    // Check version and expiration
+    if (version !== STOPS_CACHE_VERSION) {
+      sessionStorage.removeItem(STOPS_CACHE_KEY)
+      return null
+    }
+
+    const age = Date.now() - timestamp
+    if (age > CACHE_DURATION) {
+      sessionStorage.removeItem(STOPS_CACHE_KEY)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.warn('Failed to load stops from cache:', error)
+    return null
+  }
+}
+
+const saveStopsToCache = (stops) => {
+  try {
+    const cacheData = {
+      version: STOPS_CACHE_VERSION,
+      timestamp: Date.now(),
+      data: stops,
+    }
+    sessionStorage.setItem(STOPS_CACHE_KEY, JSON.stringify(cacheData))
+  } catch (error) {
+    console.warn('Failed to save stops to cache:', error)
+  }
+}
+
 export const useTimetableStore = defineStore('timetable', {
   state: () => ({
     stops: [],
@@ -211,8 +255,18 @@ export const useTimetableStore = defineStore('timetable', {
   },
   actions: {
     async fetchStops(force = false) {
-      if (this.stops.length && !force) {
-        return
+      // Try to load from cache first
+      if (!force) {
+        const cachedStops = loadStopsFromCache()
+        if (cachedStops && cachedStops.length > 0) {
+          this.stops = cachedStops
+          return
+        }
+
+        // If we already have stops in memory and not forcing, return
+        if (this.stops.length > 0) {
+          return
+        }
       }
 
       this.stopsLoading = true
@@ -221,6 +275,9 @@ export const useTimetableStore = defineStore('timetable', {
       try {
         const { data } = await axios.get(STOP_LIST_URL, { timeout: 15000 })
         this.stops = normalizeStopGroups(data.stopGroups || [])
+
+        // Save to cache for future use
+        saveStopsToCache(this.stops)
       } catch (error) {
         this.stopsError =
           error?.message || 'Unable to load PID stop list at the moment.'
@@ -515,6 +572,22 @@ export const useTimetableStore = defineStore('timetable', {
           routeShape: props.trip?.shape || props.shape || null,
           nextStop: props.last_position?.next_stop || null,
           lastStop: props.last_position?.last_stop || null,
+          // Additional rich data
+          bearing: props.last_position?.bearing || null,
+          vehicleNumber: props.trip?.vehicle_registration_number || null,
+          agencyName: props.trip?.agency_name?.real || props.trip?.agency_name?.scheduled || null,
+          wheelchairAccessible: props.trip?.wheelchair_accessible || false,
+          airConditioned: props.trip?.air_conditioned || false,
+          usbChargers: props.trip?.usb_chargers || false,
+          statePosition: props.last_position?.state_position || null,
+          isCanceled: props.last_position?.is_canceled || false,
+          isTracking: props.last_position?.tracking || false,
+          shapeDistTraveled: props.last_position?.shape_dist_traveled || null,
+          nextStopSequence: props.last_position?.next_stop?.sequence || null,
+          delayAtLastStop: {
+            arrival: props.last_position?.delay?.last_stop_arrival || null,
+            departure: props.last_position?.delay?.last_stop_departure || null,
+          },
         }
       } catch (error) {
         this.vehicleError =

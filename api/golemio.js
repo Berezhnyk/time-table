@@ -25,7 +25,11 @@ export default async function handler(req, res) {
     const endpoint = Array.isArray(path) ? path.join('/') : path || '';
 
     // Construct the full URL with query parameters
-    const url = new URL(`https://api.golemio.cz/v2/pid/${endpoint}`);
+    // vehiclepositions is a top-level v2 endpoint, not under /pid/
+    const baseUrl = endpoint.startsWith('vehiclepositions')
+      ? 'https://api.golemio.cz/v2/'
+      : 'https://api.golemio.cz/v2/pid/';
+    const url = new URL(`${baseUrl}${endpoint}`);
 
     // Forward query parameters (except 'path')
     Object.keys(req.query).forEach(key => {

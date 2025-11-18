@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta } from '../utils/transport'
+import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -18,6 +19,7 @@ const routeLine = ref(null)
 const updateTimer = ref(null)
 const trackingError = ref(null)
 const lastUpdate = ref(null)
+const nextStopName = ref(null)
 
 const tripId = computed(() => route.params.tripId)
 const stopNode = computed(() => route.params.node)
@@ -59,6 +61,82 @@ const lastUpdateLabel = computed(() => {
     second: '2-digit',
   })
 })
+
+const nextStopTime = computed(() => {
+  if (!vehicleData.value?.nextStop?.arrival_time) return null
+  const arrivalDate = new Date(vehicleData.value.nextStop.arrival_time)
+  return arrivalDate.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
+const minutesToNextStop = computed(() => {
+  if (!vehicleData.value?.nextStop?.arrival_time) return null
+  const arrivalDate = new Date(vehicleData.value.nextStop.arrival_time)
+  const now = new Date()
+  const diff = Math.round((arrivalDate - now) / 60000)
+  return Math.max(0, diff)
+})
+
+const bearingLabel = computed(() => {
+  if (!vehicleData.value?.bearing) return null
+  const bearing = vehicleData.value.bearing
+  if (bearing >= 337.5 || bearing < 22.5) return 'N'
+  if (bearing >= 22.5 && bearing < 67.5) return 'NE'
+  if (bearing >= 67.5 && bearing < 112.5) return 'E'
+  if (bearing >= 112.5 && bearing < 157.5) return 'SE'
+  if (bearing >= 157.5 && bearing < 202.5) return 'S'
+  if (bearing >= 202.5 && bearing < 247.5) return 'SW'
+  if (bearing >= 247.5 && bearing < 292.5) return 'W'
+  if (bearing >= 292.5 && bearing < 337.5) return 'NW'
+  return null
+})
+
+const statusBadgeClass = computed(() => {
+  if (!vehicleData.value) return ''
+  if (vehicleData.value.isCanceled) return 'status-canceled'
+  if (vehicleData.value.delay > 5) return 'status-delayed'
+  if (vehicleData.value.delay < -1) return 'status-early'
+  return 'status-ontime'
+})
+
+const statusPositionLabel = computed(() => {
+  if (!vehicleData.value?.statePosition) return null
+  const state = vehicleData.value.statePosition
+  // Convert snake_case to readable format
+  return state.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+})
+
+const fetchNextStopName = async (stopId) => {
+  if (!stopId) {
+    nextStopName.value = null
+    return
+  }
+
+  // Try to find stop in the loaded stops by matching the GTFS ID
+  const stop = store.stops.find(s => {
+    // Check if any of the gtfsIds array contains this ID
+    return s.gtfsIds?.some(id => {
+      // GTFS IDs are in format like "U7288Z1", "U876Z1P", etc.
+      // Check exact match or without trailing 'P'
+      return id === stopId || id.replace(/P$/, '') === stopId || id === stopId.replace(/P$/, '')
+    })
+  })
+
+  if (stop) {
+    nextStopName.value = stop.displayName
+  } else {
+    // If we can't find it in the store, try to fetch from Golemio API
+    try {
+      const { data } = await axios.get(`/api/golemio/gtfs/stops/${encodeURIComponent(stopId)}`)
+      nextStopName.value = data.stop_name || data.name || 'Unknown Stop'
+    } catch (error) {
+      console.error('Failed to fetch stop name for:', stopId, error)
+      nextStopName.value = 'Next Stop'
+    }
+  }
+}
 
 // Custom vehicle icon
 const createVehicleIcon = (color) => {
@@ -290,9 +368,15 @@ const stopTracking = () => {
 const goBack = () => {
   stopTracking()
 
+  // Clear selection temporarily so that when we navigate back,
+  // the HomeView's selectFromRoute will trigger a fresh selection
+  // and the map will properly highlight the stop
+  const nodeToNavigate = stopNode.value
+  store.clearSelection()
+
   // Navigate back to stop page using node from route
-  if (stopNode.value) {
-    router.push({ name: 'stop', params: { node: stopNode.value } }).then(() => {
+  if (nodeToNavigate) {
+    router.push({ name: 'stop', params: { node: nodeToNavigate } }).then(() => {
       // Scroll to departure board after navigation
       setTimeout(() => {
         const boardPanel = document.querySelector('.board-panel')
@@ -309,6 +393,11 @@ const goBack = () => {
 watch(vehicleData, () => {
   if (vehicleData.value) {
     updateVehiclePosition()
+
+    // Fetch next stop name if available
+    if (vehicleData.value.nextStop?.id) {
+      fetchNextStopName(vehicleData.value.nextStop.id)
+    }
 
     // Recalculate bounds after DOM updates and sidebar content is rendered
     // This ensures the map bounds are correct after the sidebar height changes
@@ -385,41 +474,71 @@ onUnmounted(() => {
 
         <div v-else-if="vehicleData" class="tracker-details">
           <div class="detail-section">
-            <h3>Current Status</h3>
-            <p class="status-label" :class="{ delayed: vehicleData.delay > 0 }">
+            <h3>Status</h3>
+            <p class="status-label" :class="statusBadgeClass">
               {{ statusLabel }}
+            </p>
+            <p v-if="vehicleData.isCanceled" class="warning-text" style="margin-top: 0.5rem;">
+              Service Canceled
             </p>
           </div>
 
-          <div class="detail-section">
-            <h3>Position</h3>
-            <p class="coords">
-              {{ vehicleData.lat?.toFixed(6) }}, {{ vehicleData.lon?.toFixed(6) }}
+          <div v-if="vehicleData.nextStop" class="detail-section next-stop-highlight">
+            <h3>Next Stop</h3>
+            <p class="next-stop-name">{{ nextStopName || 'Loading...' }}</p>
+            <div class="next-stop-time">
+              <span v-if="nextStopTime" class="time">{{ nextStopTime }}</span>
+              <span v-if="minutesToNextStop !== null" class="countdown">
+                in {{ minutesToNextStop }} min
+              </span>
+            </div>
+          </div>
+
+          <div v-if="vehicleData.vehicleNumber || vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="detail-section">
+            <h3>Vehicle</h3>
+            <p v-if="vehicleData.vehicleNumber" class="vehicle-number">
+              #{{ vehicleData.vehicleNumber }}
             </p>
+
+            <div v-if="vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="amenities">
+              <span v-if="vehicleData.wheelchairAccessible" class="amenity-badge" title="Wheelchair Accessible">
+                ♿ Accessible
+              </span>
+              <span v-if="vehicleData.airConditioned" class="amenity-badge" title="Air Conditioned">
+                ❄ AC
+              </span>
+              <span v-if="vehicleData.usbChargers" class="amenity-badge" title="USB Chargers">
+                🔌 USB
+              </span>
+            </div>
+          </div>
+
+          <div v-if="bearingLabel || vehicleData.speed" class="detail-section">
+            <h3>Movement</h3>
+            <div class="movement-grid">
+              <div v-if="bearingLabel" class="movement-item">
+                <span class="movement-label">Heading</span>
+                <span class="movement-value">{{ bearingLabel }}</span>
+              </div>
+              <div v-if="vehicleData.speed" class="movement-item">
+                <span class="movement-label">Speed</span>
+                <span class="movement-value">{{ Math.round(vehicleData.speed) }} km/h</span>
+              </div>
+            </div>
           </div>
 
           <div v-if="distanceToStop" class="detail-section">
-            <h3>Distance from Stop</h3>
+            <h3>Distance</h3>
             <p class="distance-value">{{ distanceToStop }}</p>
-            <p class="caption" style="margin-top: 0.5rem;">
-              Direct distance "as the crow flies". The map shows the actual route path when available.
-            </p>
-          </div>
-
-          <div v-if="vehicleData.speed" class="detail-section">
-            <h3>Speed</h3>
-            <p>{{ Math.round(vehicleData.speed) }} km/h</p>
+            <p class="caption">from {{ store.selectedStop?.displayName || 'origin stop' }}</p>
           </div>
 
           <div class="detail-section">
             <h3>Last Update</h3>
             <p>{{ lastUpdateLabel }}</p>
-          </div>
-
-          <div v-if="store.selectedStop" class="detail-section">
-            <h3>Origin Stop</h3>
-            <p>{{ store.selectedStop.displayName }}</p>
-            <p class="caption">Node {{ store.selectedStop.node }}</p>
+            <p v-if="!vehicleData.isTracking" class="caption warning-text" style="margin-top: 0.5rem;">
+              Real-time tracking not active
+            </p>
           </div>
         </div>
 
@@ -540,15 +659,32 @@ onUnmounted(() => {
 .status-label {
   font-weight: 600;
   padding: 0.5rem 0.75rem;
-  background: var(--success-surface, #00ff0015);
-  border: 1px solid var(--success-border, #00ff0033);
   border-radius: 0.375rem;
   display: inline-block;
 }
 
-.status-label.delayed {
+.status-ontime {
+  background: var(--success-surface, #00ff0015);
+  border: 1px solid var(--success-border, #00ff0033);
+  color: var(--success-text, #00ff00);
+}
+
+.status-delayed {
   background: var(--warning-surface, #ff880015);
-  border-color: var(--warning-border, #ff880033);
+  border: 1px solid var(--warning-border, #ff880033);
+  color: var(--warning-text, #ff8800);
+}
+
+.status-early {
+  background: var(--info-surface, #0088ff15);
+  border: 1px solid var(--info-border, #0088ff33);
+  color: var(--info-text, #0088ff);
+}
+
+.status-canceled {
+  background: var(--error-surface, #ff000015);
+  border: 1px solid var(--error-border, #ff000033);
+  color: var(--error-text, #ff4444);
 }
 
 .coords {
@@ -620,6 +756,97 @@ onUnmounted(() => {
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
 }
 
+/* New UI elements */
+.next-stop-highlight {
+  background: var(--surface-dark);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.next-stop-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.next-stop-time {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-top: 0.5rem;
+}
+
+.next-stop-time .time {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.next-stop-time .countdown {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-base);
+  border-radius: 0.25rem;
+}
+
+.vehicle-number {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.amenity-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-dark);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.movement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.movement-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.movement-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.movement-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.warning-text {
+  color: var(--warning-text, #ff8800);
+  font-style: italic;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .tracker-content {
@@ -635,6 +862,11 @@ onUnmounted(() => {
     border-left: none;
     border-top: 1px solid var(--border-subtle);
     max-height: 50vh;
+  }
+
+  .movement-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 }
 </style>
