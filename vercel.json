@@ -3,6 +3,10 @@
     {
       "source": "/api/golemio/:path*",
       "destination": "/api/golemio"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
