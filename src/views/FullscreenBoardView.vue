@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
 import DepartureBoard from '../components/DepartureBoard.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const REFRESH_INTERVAL = 5000
 
@@ -134,9 +135,12 @@ watch(
           </span>
         </p>
       </div>
-      <button class="ghost" type="button" @click="exitFullscreen">
-        Exit fullscreen
-      </button>
+      <div style="display: flex; gap: 0.5rem;">
+        <ThemeToggle />
+        <button class="ghost" type="button" @click="exitFullscreen">
+          Exit fullscreen
+        </button>
+      </div>
     </header>
 
     <section class="fullscreen-board">
@@ -153,4 +157,3 @@ watch(
     </footer>
   </div>
 </template>
-

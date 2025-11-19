@@ -5,6 +5,7 @@ import { useTimetableStore } from '../stores/timetableStore'
 import StopSearch from '../components/StopSearch.vue'
 import StopMap from '../components/StopMap.vue'
 import DepartureBoard from '../components/DepartureBoard.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const store = useTimetableStore()
 const route = useRoute()
@@ -97,6 +98,9 @@ watch(
           >.
         </p>
       </div>
+      <div>
+        <ThemeToggle />
+      </div>
     </header>
 
     <main class="app-main">
@@ -119,4 +123,3 @@ watch(
     </footer>
   </div>
 </template>
-

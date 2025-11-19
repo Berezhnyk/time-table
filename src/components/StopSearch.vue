@@ -69,12 +69,8 @@ const clearSearch = () => {
   <section class="panel">
     <header class="panel-header">
       <div>
-        <p class="eyebrow">Step 1</p>
         <h2>Select a stop</h2>
       </div>
-      <span class="caption">
-        {{ groupedStops.length }} groups
-      </span>
     </header>
 
     <label class="input-label" for="stop-search-input">Search by name</label>

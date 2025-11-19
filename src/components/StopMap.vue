@@ -3,14 +3,17 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import { useTimetableStore } from '../stores/timetableStore'
+import { useThemeStore } from '../stores/themeStore'
 import { getTransportMeta } from '../utils/transport'
 
 const store = useTimetableStore()
+const themeStore = useThemeStore()
 const mapElement = ref(null)
 
 let mapInstance
 let markerLayer
 let markers = new Map()
+let currentTileLayer = null
 
 const initMap = () => {
   if (mapInstance || !mapElement.value) {
@@ -21,11 +24,7 @@ const initMap = () => {
     zoomControl: false,
   }).setView([50.0755, 14.4378], 12)
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  }).addTo(mapInstance)
+  updateTileLayer()
 
   L.control
     .zoom({
@@ -43,6 +42,34 @@ const initMap = () => {
 
   setTimeout(() => mapInstance.invalidateSize(), 600)
   renderMarkers()
+}
+
+const updateTileLayer = () => {
+  if (!mapInstance) {
+    return
+  }
+
+  // Remove existing tile layer if present
+  if (currentTileLayer) {
+    mapInstance.removeLayer(currentTileLayer)
+  }
+
+  // Check if dark mode is active
+  const isDark = themeStore.theme === 'dark'
+
+  // Add tile layer - use dark tiles if in dark mode
+  const tileUrl = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+  const attribution = isDark
+    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+
+  currentTileLayer = L.tileLayer(tileUrl, {
+    attribution: attribution,
+    maxZoom: 19,
+  }).addTo(mapInstance)
 }
 
 const createMarkerIcon = (stop, isSelected = false) => {
@@ -131,16 +158,21 @@ watch(
     focusSelectedStop()
   }
 )
+
+watch(
+  () => themeStore.theme,
+  () => {
+    updateTileLayer()
+  }
+)
 </script>
 
 <template>
   <section class="panel map-panel">
     <header class="panel-header">
       <div>
-        <p class="eyebrow">Step 2</p>
         <h2>Or pick via map</h2>
       </div>
-      <p class="caption">Tap a marker to load departures</p>
     </header>
     <div ref="mapElement" class="map-container" aria-label="Interactive map of PID stops" />
   </section>

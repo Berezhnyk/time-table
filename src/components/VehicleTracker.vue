@@ -2,12 +2,14 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
+import { useThemeStore } from '../stores/themeStore'
 import { getTransportMeta } from '../utils/transport'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const store = useTimetableStore()
+const themeStore = useThemeStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -20,6 +22,7 @@ const updateTimer = ref(null)
 const trackingError = ref(null)
 const lastUpdate = ref(null)
 const nextStopName = ref(null)
+let currentTileLayer = null
 
 const tripId = computed(() => route.params.tripId)
 const stopNode = computed(() => route.params.node)
@@ -177,9 +180,33 @@ const initMap = () => {
     zoomControl: true,
   }).setView([50.0755, 14.4378], 13)
 
-  // Add tile layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  updateTileLayer()
+}
+
+const updateTileLayer = () => {
+  if (!map.value) {
+    return
+  }
+
+  // Remove existing tile layer if present
+  if (currentTileLayer) {
+    map.value.removeLayer(currentTileLayer)
+  }
+
+  // Check if dark mode is active
+  const isDark = themeStore.theme === 'dark'
+
+  // Add tile layer - use dark tiles if in dark mode
+  const tileUrl = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+  const attribution = isDark
+    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+
+  currentTileLayer = L.tileLayer(tileUrl, {
+    attribution: attribution,
     maxZoom: 18,
   }).addTo(map.value)
 }
@@ -409,6 +436,13 @@ watch(vehicleData, () => {
   }
 })
 
+watch(
+  () => themeStore.theme,
+  () => {
+    updateTileLayer()
+  }
+)
+
 onMounted(async () => {
   initMap()
 
@@ -617,14 +651,14 @@ onUnmounted(() => {
 }
 
 .tracker-sidebar {
-  width: 320px;
+  width: 280px;
   background: var(--surface-base);
   border-left: 1px solid var(--border-subtle);
-  padding: 1.5rem;
+  padding: 1rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .tracker-error {
@@ -638,28 +672,30 @@ onUnmounted(() => {
 .tracker-details {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .detail-section h3 {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-tertiary);
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.35rem 0;
   font-weight: 600;
 }
 
 .detail-section p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .status-label {
   font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.3rem;
   display: inline-block;
+  font-size: 0.85rem;
 }
 
 .status-ontime {
@@ -693,9 +729,10 @@ onUnmounted(() => {
 }
 
 .distance-value {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .tracker-placeholder {
@@ -706,14 +743,15 @@ onUnmounted(() => {
 
 .tracker-info {
   margin-top: auto;
-  padding-top: 1.5rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border-subtle);
 }
 
 .caption {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-tertiary);
-  line-height: 1.4;
+  line-height: 1.3;
+  margin: 0;
 }
 
 /* Vehicle marker styles */
@@ -758,56 +796,56 @@ onUnmounted(() => {
 /* New UI elements */
 .next-stop-highlight {
   background: var(--surface-dark);
-  padding: 1rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
   border: 1px solid var(--border-subtle);
 }
 
 .next-stop-name {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.4rem 0;
 }
 
 .next-stop-time {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.6rem;
   align-items: baseline;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
 }
 
 .next-stop-time .time {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .next-stop-time .countdown {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   background: var(--surface-base);
   border-radius: 0.25rem;
 }
 
 .vehicle-number {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.5rem 0;
 }
 
 .amenities {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .amenity-badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
   background: var(--surface-dark);
   border: 1px solid var(--border-subtle);
   border-radius: 0.25rem;
@@ -818,17 +856,17 @@ onUnmounted(() => {
 .movement-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .movement-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .movement-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-tertiary);
@@ -836,7 +874,7 @@ onUnmounted(() => {
 }
 
 .movement-value {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
 }

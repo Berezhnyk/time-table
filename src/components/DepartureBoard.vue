@@ -10,6 +10,7 @@ const route = useRoute()
 
 const apiKeyConfigured = Boolean(import.meta.env.VITE_GOLEMIO_API_KEY)
 const isFullscreenRoute = computed(() => route.name === 'fullscreen')
+const isOnStopPage = computed(() => Boolean(route.params.node))
 const isInitialLoad = computed(
   () => store.departuresLoading && !store.departures.length && store.hasSelection
 )
@@ -151,7 +152,9 @@ const trackVehicle = (departure) => {
           {{
             store.selectedStop
               ? store.selectedStop.altName || store.selectedStop.displayName
-              : 'Awaiting stop selection'
+              : isOnStopPage
+                ? 'Loading...'
+                : 'Awaiting stop selection'
           }}
         </h2>
         <p v-if="store.selectedStop" class="stop-meta">
@@ -185,14 +188,14 @@ const trackVehicle = (departure) => {
     </header>
 
     <div class="board-surface">
-      <div v-if="!store.hasSelection" class="board-placeholder">
+      <div v-if="!store.hasSelection && !isOnStopPage" class="board-placeholder">
         <p>Select any stop to load live departures.</p>
         <p class="caption">
           Data sourced from PID open data + Golemio APIs.
         </p>
       </div>
 
-      <div v-else-if="isInitialLoad" class="board-placeholder">
+      <div v-else-if="!store.hasSelection || isInitialLoad" class="board-placeholder">
         <p>Fetching live departures…</p>
       </div>
 
