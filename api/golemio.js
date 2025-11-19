@@ -25,8 +25,13 @@ export default async function handler(req, res) {
     const endpoint = Array.isArray(path) ? path.join('/') : path || '';
 
     // Construct the full URL with query parameters
-    // vehiclepositions is a top-level v2 endpoint, not under /pid/
-    const baseUrl = endpoint.startsWith('vehiclepositions')
+    // Some endpoints are top-level v2, others are under /pid/
+    const isTopLevelEndpoint =
+      endpoint.startsWith('vehiclepositions') ||
+      endpoint.startsWith('public/') ||
+      endpoint.startsWith('gtfs/');
+
+    const baseUrl = isTopLevelEndpoint
       ? 'https://api.golemio.cz/v2/'
       : 'https://api.golemio.cz/v2/pid/';
     const url = new URL(`${baseUrl}${endpoint}`);
