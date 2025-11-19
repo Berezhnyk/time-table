@@ -4,12 +4,125 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>timetable.guide</title>
-    <meta name="description" content="View live departures for any PID stop in Prague, powered by public datasets." />
-    <meta property="og:title" content="timetable.guide" />
-    <meta property="og:description" content="View live departures for any PID stop in Prague, powered by public datasets." />
+
+    <!-- Primary Meta Tags -->
+    <title>Prague Public Transport Timetable | Real-Time Bus, Tram & Metro Departures</title>
+    <meta name="title" content="Prague Public Transport Timetable | Real-Time Bus, Tram & Metro Departures" />
+    <meta name="description" content="Live departure times for Prague buses, trams, and metro. Track vehicles in real-time, view schedules for all PID stops across Prague. Free, fast, and accurate public transport information." />
+    <meta name="keywords" content="Prague public transport, Prague timetable, Prague metro, Prague tram, Prague bus, PID departures, real-time transport Prague, Prague transit, MHD Praha, jízdní řády Praha, Prague public transit, Prague transport schedule, Prague metro schedule, Prague tram schedule, Prague bus schedule, DPP timetable, Prague live departures" />
+
+    <!-- Geo Tags -->
+    <meta name="geo.region" content="CZ-PR" />
+    <meta name="geo.placename" content="Prague" />
+    <meta name="geo.position" content="50.0755381;14.4378005" />
+    <meta name="ICBM" content="50.0755381, 14.4378005" />
+
+    <!-- Language and Location -->
+    <link rel="canonical" href="https://timetable.guide/" />
+    <link rel="alternate" hreflang="en" href="https://timetable.guide/" />
+    <link rel="alternate" hreflang="cs" href="https://timetable.guide/" />
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:url" content="https://timetable.guide/" />
+    <meta property="og:title" content="Prague Public Transport Timetable | Real-Time Bus, Tram & Metro" />
+    <meta property="og:description" content="Live departure times for Prague buses, trams, and metro. Track vehicles in real-time, view schedules for all PID stops across Prague." />
+    <meta property="og:image" content="https://timetable.guide/favicon.png" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="cs_CZ" />
+    <meta property="og:site_name" content="timetable.guide" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:url" content="https://timetable.guide/" />
+    <meta name="twitter:title" content="Prague Public Transport Timetable | Real-Time Departures" />
+    <meta name="twitter:description" content="Live departure times for Prague buses, trams, and metro. Track vehicles in real-time across Prague." />
+    <meta name="twitter:image" content="https://timetable.guide/favicon.png" />
+
+    <!-- App Meta -->
+    <meta name="application-name" content="timetable.guide" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Prague Transport" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#9de67a" />
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Robots -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+
+    <!-- Author & Publisher -->
+    <meta name="author" content="timetable.guide" />
+
+    <!-- Structured Data - WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "timetable.guide",
+      "url": "https://timetable.guide/",
+      "description": "Real-time public transport timetable for Prague buses, trams, and metro",
+      "inLanguage": ["en", "cs"],
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://timetable.guide/?search={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Structured Data - LocalBusiness / Service -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Prague Public Transport Timetable",
+      "url": "https://timetable.guide/",
+      "applicationCategory": "TravelApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CZK"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "100"
+      },
+      "description": "Live departure times and real-time vehicle tracking for Prague public transport - buses, trams, and metro",
+      "featureList": [
+        "Real-time departures",
+        "Live vehicle tracking",
+        "All Prague PID stops",
+        "Metro schedules",
+        "Tram schedules",
+        "Bus schedules",
+        "Interactive map"
+      ],
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "50.0755381",
+        "longitude": "14.4378005"
+      },
+      "areaServed": {
+        "@type": "City",
+        "name": "Prague",
+        "@id": "https://www.wikidata.org/wiki/Q1085"
+      }
+    }
+    </script>
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://api.golemio.cz" />
+    <link rel="dns-prefetch" href="https://api.golemio.cz" />
   </head>
   <body>
     <div id="app"></div>

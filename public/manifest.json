@@ -1,0 +1,39 @@
+{
+  "name": "Prague Public Transport Timetable",
+  "short_name": "Prague Transit",
+  "description": "Real-time departures for Prague buses, trams, and metro. Track vehicles live and view schedules for all PID stops.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#041804",
+  "theme_color": "#9de67a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["travel", "utilities", "navigation"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Home",
+      "short_name": "Home",
+      "description": "View nearby stops and search",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

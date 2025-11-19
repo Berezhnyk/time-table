@@ -764,16 +764,8 @@ const updateVehiclePosition = () => {
     // Collect all points for bounds calculation
     let boundsPoints = [position]
 
-    // Add route stops if available
-    if (routeStops.value && routeStops.value.length > 0) {
-      routeStops.value.forEach(stopTime => {
-        const coords = stopTime.stop?.geometry?.coordinates
-        if (coords && coords.length >= 2) {
-          boundsPoints.push([coords[1], coords[0]])
-        }
-      })
-    } else if (store.selectedStop) {
-      // Fallback: just include vehicle and selected stop
+    // Only include the selected stop (not all route stops)
+    if (store.selectedStop) {
       boundsPoints.push([store.selectedStop.lat, store.selectedStop.lon])
     }
 

@@ -596,6 +596,16 @@ input:focus {
   align-items: center;
 }
 
+.board-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.board-action-button svg {
+  flex-shrink: 0;
+}
+
 .auto-refresh-toggle {
   display: flex;
   align-items: center;
@@ -704,24 +714,15 @@ input:focus {
 }
 
 .platform-badge-large {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 1rem;
   font-weight: 700;
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
-  background: #495057;
-  color: #ffffff;
-  border: 2px solid #343a40;
-  min-width: 2.5rem;
+  color: #495057;
 }
 
 .dark .platform-badge-large {
-  background: rgba(157, 230, 122, 0.25);
-  color: #d6ffd0;
-  border: 2px solid rgba(157, 230, 122, 0.5);
+  color: #9de67a;
 }
 
 .platform-count {
@@ -1146,6 +1147,16 @@ input:focus {
     flex: 1;
   }
 
+  /* Hide button text on mobile, show only icons */
+  .board-action-button .button-text {
+    display: none;
+  }
+
+  .board-action-button {
+    justify-content: center;
+    padding: 0.5rem 0.75rem;
+  }
+
   /* Hide Status column on mobile, but keep Arrives (most important) */
   .departure-grid th:nth-child(7),
   .departure-grid td:nth-child(7) {
@@ -1310,12 +1321,12 @@ input:focus {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 0.875rem;
-  background-color: #d6ffd0;
-  border: 1px solid #9de67a;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #041804;
+  color: #495057;
   min-height: 40px;
   font-weight: 500;
   font-size: 0.9rem;
@@ -1327,10 +1338,10 @@ input:focus {
 }
 
 .locate-button:hover:not(:disabled) {
-  background-color: #9de67a;
-  border-color: #7bc961;
+  background-color: #e9ecef;
+  border-color: #ced4da;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(157, 230, 122, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .locate-button:active:not(:disabled) {
@@ -1343,16 +1354,15 @@ input:focus {
 }
 
 .dark .locate-button {
-  background-color: #041804;
-  border-color: #9de67a;
+  background-color: rgba(157, 230, 122, 0.08);
+  border-color: rgba(157, 230, 122, 0.25);
   color: #9de67a;
 }
 
 .dark .locate-button:hover:not(:disabled) {
-  background-color: #0a2a08;
-  border-color: #d6ffd0;
-  color: #d6ffd0;
-  box-shadow: 0 2px 8px rgba(157, 230, 122, 0.2);
+  background-color: rgba(157, 230, 122, 0.15);
+  border-color: rgba(157, 230, 122, 0.4);
+  box-shadow: 0 2px 8px rgba(157, 230, 122, 0.1);
 }
 
 .locate-button .spinner {

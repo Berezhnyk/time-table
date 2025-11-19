@@ -379,21 +379,49 @@ watch(
           <span>{{ t('departureBoard.autoRefresh') }}</span>
         </label>
         <button
-          class="ghost"
+          class="ghost board-action-button"
           type="button"
           :disabled="!store.hasSelection || store.departuresLoading"
           @click="refreshBoard"
+          :aria-label="t('common.refresh')"
         >
-          {{ t('common.refresh') }}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          <span class="button-text">{{ t('common.refresh') }}</span>
         </button>
         <button
           v-if="!isFullscreenRoute"
-          class="ghost"
+          class="ghost board-action-button"
           type="button"
           :disabled="!store.hasSelection"
           @click="openFullscreen"
+          :aria-label="t('departureBoard.fullscreen')"
         >
-          {{ t('departureBoard.fullscreen') }}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          <span class="button-text">{{ t('departureBoard.fullscreen') }}</span>
         </button>
       </div>
     </header>

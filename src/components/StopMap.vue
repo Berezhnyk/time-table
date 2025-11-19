@@ -278,6 +278,13 @@ const findNearestStop = () => {
 
 onMounted(() => {
   initMap()
+  // Highlight and focus the selected stop if one is already selected when component mounts
+  if (store.selectedStop) {
+    setTimeout(() => {
+      highlightSelectedStop()
+      focusSelectedStop()
+    }, 100)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -291,6 +298,12 @@ watch(
   () => store.stopCount,
   () => {
     renderMarkers()
+    // Re-highlight after markers are rendered
+    if (store.selectedStop) {
+      setTimeout(() => {
+        highlightSelectedStop()
+      }, 50)
+    }
   }
 )
 

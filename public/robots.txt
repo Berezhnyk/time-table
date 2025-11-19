@@ -1,0 +1,14 @@
+# robots.txt for timetable.guide
+
+User-agent: *
+Allow: /
+Allow: /stops/*
+
+# Disallow tracking URLs with dynamic trip IDs (they change frequently)
+Disallow: */track/*
+
+# Sitemap
+Sitemap: https://timetable.guide/sitemap.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1

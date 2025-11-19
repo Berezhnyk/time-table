@@ -11,7 +11,7 @@
     "mins": "mins"
   },
   "header": {
-    "eyebrow": "PID Open Data",
+    "eyebrow": "Prague Public Transport",
     "title": "timetable.guide",
     "subtitle": "Search or pick any PID stop to see its live departures, powered by {link}.",
     "publicDatasets": "public datasets"
