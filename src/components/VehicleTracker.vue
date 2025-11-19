@@ -641,30 +641,46 @@ const updateUserMarker = (lat, lon, fitBounds = false) => {
   }
 }
 
-const startWatchingUserLocation = () => {
+const startWatchingUserLocation = async () => {
   if (!navigator.geolocation) return
 
-  // Try to get initial position without showing error
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      updateUserMarker(position.coords.latitude, position.coords.longitude, false)
-    },
-    () => {
-      // Silently fail on initial attempt - user can click button if they want
-    },
-    { timeout: 5000, maximumAge: 60000 }
-  )
+  // Check if we have permission before requesting location
+  // This prevents prompting the user on page load
+  if (navigator.permissions) {
+    try {
+      const permissionStatus = await navigator.permissions.query({ name: 'geolocation' })
 
-  // Watch position for continuous updates
-  watchId = navigator.geolocation.watchPosition(
-    (position) => {
-      updateUserMarker(position.coords.latitude, position.coords.longitude, false)
-    },
-    () => {
-      // Silently fail - marker just won't update
-    },
-    { enableHighAccuracy: false, maximumAge: 30000 }
-  )
+      // Only start watching if permission was already granted
+      if (permissionStatus.state === 'granted') {
+        // Get initial position
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            updateUserMarker(position.coords.latitude, position.coords.longitude, false)
+          },
+          () => {
+            // Silently fail
+          },
+          { timeout: 5000, maximumAge: 60000 }
+        )
+
+        // Watch position for continuous updates
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            updateUserMarker(position.coords.latitude, position.coords.longitude, false)
+          },
+          () => {
+            // Silently fail - marker just won't update
+          },
+          { enableHighAccuracy: false, maximumAge: 30000 }
+        )
+      }
+      // If permission is 'prompt' or 'denied', do nothing - user can click button
+    } catch (error) {
+      // Permissions API not supported, don't auto-request location
+      // User can still click the button to request it
+    }
+  }
+  // If Permissions API is not available, don't auto-request location
 }
 
 const stopWatchingUserLocation = () => {
@@ -696,6 +712,19 @@ const showUserLocation = () => {
       showResetView.value = false
       updateUserMarker(position.coords.latitude, position.coords.longitude, true)
       locatingUser.value = false
+
+      // Start continuous location watching if not already watching
+      if (watchId === null) {
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            updateUserMarker(position.coords.latitude, position.coords.longitude, false)
+          },
+          () => {
+            // Silently fail - marker just won't update
+          },
+          { enableHighAccuracy: false, maximumAge: 30000 }
+        )
+      }
     },
     (error) => {
       locatingUser.value = false
@@ -936,7 +965,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="vehicleData.lastStop" class="detail-section current-stop-highlight">
+          <div v-if="vehicleData.lastStop && vehicleData.isTracking" class="detail-section current-stop-highlight">
             <h3>Current Stop</h3>
             <p class="current-stop-name">{{ currentStopName || 'Loading...' }}</p>
             <div class="current-stop-time">
