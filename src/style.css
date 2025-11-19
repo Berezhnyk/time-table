@@ -436,6 +436,72 @@ input:focus {
   animation: pulse-marker 2s ease-in-out infinite;
 }
 
+.transport-marker__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--marker-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.transport-marker__icon--selected {
+  width: 38px;
+  height: 38px;
+  border: 3px solid #d6ffd0;
+  box-shadow:
+    0 0 20px rgba(214, 255, 208, 0.8),
+    0 0 40px rgba(157, 230, 122, 0.5),
+    inset 0 0 10px rgba(255, 255, 255, 0.3);
+  animation: pulse-marker 2s ease-in-out infinite;
+}
+
+.transport-marker__multi {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(0, 0, 0, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+}
+
+.dark .transport-marker__multi {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.transport-marker__multi-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.transport-marker__multi--selected {
+  border: 3px solid #d6ffd0;
+  box-shadow:
+    0 0 20px rgba(214, 255, 208, 0.8),
+    0 0 40px rgba(157, 230, 122, 0.5);
+  animation: pulse-marker 2s ease-in-out infinite;
+}
+
+.transport-marker__multi--selected .transport-marker__multi-icon {
+  width: 24px;
+  height: 24px;
+}
+
 @keyframes pulse-marker {
   0%, 100% {
     transform: scale(1);
@@ -787,6 +853,48 @@ input:focus {
   box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.4);
 }
 
+.transport-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--icon-bg-color, #d6ffd0);
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.transport-icon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+  filter: brightness(0.9) saturate(0.95);
+}
+
+.dark .transport-icon {
+  border-color: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  filter: brightness(0.7) saturate(0.8);
+}
+
+.dark .transport-icon:hover {
+  filter: brightness(0.75) saturate(0.85);
+}
+
+.transport-icon--small {
+  width: 28px;
+  height: 28px;
+}
+
+.transport-icons-group {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .stop-name .transport-chip {
   margin-left: 0;
   font-size: 0.65rem;
@@ -1022,9 +1130,7 @@ input:focus {
     flex: 1;
   }
 
-  /* Hide Arrives and Status columns on mobile */
-  .departure-grid th:nth-child(4),
-  .departure-grid td:nth-child(4),
+  /* Hide Status column on mobile, but keep Arrives (most important) */
   .departure-grid th:nth-child(7),
   .departure-grid td:nth-child(7) {
     display: none;

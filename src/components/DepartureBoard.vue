@@ -1,8 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
-import { getTransportMeta } from '../utils/transport'
+import { getTransportMeta, getTransportIconSvg } from '../utils/transport'
 
 const REFRESH_INTERVAL = 5000
 const AUTO_REFRESH_KEY = 'timetable_auto_refresh'
@@ -48,11 +48,15 @@ const lastUpdatedLabel = computed(() =>
 
 const formattedDepartures = computed(() =>
   store.departures.map((departure) => {
-    const transportMeta = getTransportMeta(departure.transportKey || departure.vehicleType)
+    const transportMeta = getTransportMeta(
+      departure.transportKey || departure.vehicleType,
+      departure.line // Pass line name for metro color
+    )
 
     return {
       ...departure,
       transportMeta,
+      transportIcon: getTransportIconSvg(transportMeta.label, 20),
       plannedLabel: formatTime(departure.plannedTime),
       realtimeLabel: formatTime(departure.realtimeTime),
       status: formatStatus(departure),
@@ -64,19 +68,60 @@ const formattedDepartures = computed(() =>
 const departuresByPlatform = computed(() => {
   const grouped = {}
 
-  // Group departures by platform
+  // Helper function to generate smart platform names for metro
+  const generatePlatformName = (departure, allDepartures) => {
+    // If platform is provided and not a dash/hyphen, use it
+    if (departure.platform && departure.platform !== '-' && departure.platform !== '—') {
+      return departure.platform
+    }
+
+    // For metro stations, generate intelligent names
+    if (departure.transportMeta.label === 'Metro') {
+      // Get all metro lines at this stop
+      const metroLines = new Set(
+        allDepartures
+          .filter(d => d.transportMeta.label === 'Metro')
+          .map(d => d.line)
+      )
+
+      // If multiple metro lines (intersection), show intersection
+      if (metroLines.size > 1) {
+        const sortedLines = Array.from(metroLines).sort()
+        return `Metro ${sortedLines.join(' & ')}`
+      }
+
+      // Single metro line - show line and direction
+      return `Metro ${departure.line} → ${departure.destination}`
+    }
+
+    return departure.platform || 'Unknown'
+  }
+
+  // Group departures by smart platform name
   formattedDepartures.value.forEach(departure => {
-    const platform = departure.platform || 'Unknown'
+    const platform = generatePlatformName(departure, formattedDepartures.value)
     if (!grouped[platform]) {
       grouped[platform] = []
     }
     grouped[platform].push(departure)
   })
 
-  // Sort platforms: numbers first, then letters, then "Unknown"
+  // Sort platforms: Metro first, then numbers, then letters, then "Unknown"
   const sortedPlatforms = Object.keys(grouped).sort((a, b) => {
     if (a === 'Unknown') return 1
     if (b === 'Unknown') return -1
+
+    const aIsMetro = a.startsWith('Metro ')
+    const bIsMetro = b.startsWith('Metro ')
+
+    // Metro platforms come first
+    if (aIsMetro && !bIsMetro) return -1
+    if (!aIsMetro && bIsMetro) return 1
+
+    // Both metro - sort alphabetically by line
+    if (aIsMetro && bIsMetro) {
+      return a.localeCompare(b, undefined, { numeric: true })
+    }
 
     const aIsNumber = /^\d+$/.test(a)
     const bIsNumber = /^\d+$/.test(b)
@@ -187,6 +232,13 @@ const openFullscreen = () => {
   // Navigate to fullscreen route instead of using native Fullscreen API
   // This provides a consistent, scrollable experience across all platforms
   router.push({ name: 'fullscreen', params: { node: store.selectedStop.node } })
+
+  // On mobile, scroll to top after entering fullscreen
+  if (window.innerWidth <= 768) {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 100)
+  }
 }
 
 
@@ -272,6 +324,22 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopAutoRefresh()
 })
+
+// Watch for route changes to scroll to board when exiting fullscreen on mobile
+watch(
+  () => route.name,
+  (newRouteName, oldRouteName) => {
+    // When exiting fullscreen on mobile, scroll to departure board
+    if (oldRouteName === 'fullscreen' && newRouteName === 'stop' && window.innerWidth <= 768) {
+      setTimeout(() => {
+        const boardPanel = document.querySelector('.board-panel')
+        if (boardPanel) {
+          boardPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
+    }
+  }
+)
 </script>
 
 <template>
@@ -418,11 +486,11 @@ onBeforeUnmount(() => {
                 >
                   <td>
                     <span
-                      class="transport-chip"
-                      :style="{ '--chip-color': departure.transportMeta.color }"
+                      class="transport-icon"
+                      :style="{ '--icon-bg-color': departure.transportMeta.color }"
                       :aria-label="departure.transportMeta.label"
+                      v-html="departure.transportIcon"
                     >
-                      {{ departure.transportMeta.code }}
                     </span>
                   </td>
                   <td class="line-cell">

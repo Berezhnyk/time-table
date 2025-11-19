@@ -4,7 +4,7 @@ import L from 'leaflet'
 import 'leaflet.markercluster'
 import { useTimetableStore } from '../stores/timetableStore'
 import { useThemeStore } from '../stores/themeStore'
-import { getTransportMeta } from '../utils/transport'
+import { getTransportMeta, getTransportIconSvg, getUniqueTransportTypes } from '../utils/transport'
 
 const store = useTimetableStore()
 const themeStore = useThemeStore()
@@ -76,14 +76,64 @@ const updateTileLayer = () => {
 }
 
 const createMarkerIcon = (stop, isSelected = false) => {
-  const meta = getTransportMeta(stop.transportKey || stop.trafficType)
-  const selectedClass = isSelected ? 'transport-marker__dot--selected' : ''
+  const transportTypes = getUniqueTransportTypes(stop.lines)
+
+  // If multiple transport types, create a multi-icon marker
+  if (transportTypes.length > 1) {
+    const selectedClass = isSelected ? 'transport-marker__multi--selected' : ''
+    const size = isSelected ? 50 : 42
+    const anchor = isSelected ? 25 : 21
+    const iconSize = isSelected ? 16 : 14
+
+    const icons = transportTypes.slice(0, 3).map(type => {
+      // For metro, try to find a line name to get correct color
+      let lineName = null
+      if (type.toLowerCase() === 'metro') {
+        const metroLine = stop.lines.find(line =>
+          line.type && line.type.toLowerCase() === 'metro'
+        )
+        lineName = metroLine ? metroLine.name : null
+      }
+
+      const meta = getTransportMeta(type, lineName)
+      const svg = getTransportIconSvg(meta.label, iconSize)
+      return `<span class="transport-marker__multi-icon" style="background: ${meta.color}">${svg}</span>`
+    }).join('')
+
+    return L.divIcon({
+      className: 'transport-marker',
+      html: `<div class="transport-marker__multi ${selectedClass}">
+          ${icons}
+        </div>`,
+      iconSize: [size, size],
+      iconAnchor: [anchor, anchor],
+      tooltipAnchor: [0, -anchor],
+    })
+  }
+
+  // Single transport type - use single icon
+  const transportType = transportTypes[0] || stop.transportKey || stop.trafficType
+
+  // For metro, try to find a line name to get correct color
+  let lineName = null
+  if (transportType && transportType.toLowerCase() === 'metro') {
+    const metroLine = stop.lines.find(line =>
+      line.type && line.type.toLowerCase() === 'metro'
+    )
+    lineName = metroLine ? metroLine.name : null
+  }
+
+  const meta = getTransportMeta(transportType, lineName)
+  const selectedClass = isSelected ? 'transport-marker__icon--selected' : ''
   const size = isSelected ? 44 : 36
   const anchor = isSelected ? 22 : 18
+  const iconSize = isSelected ? 22 : 18
+  const iconSvg = getTransportIconSvg(meta.label, iconSize)
+
   return L.divIcon({
     className: 'transport-marker',
-    html: `<span class="transport-marker__dot ${selectedClass}" style="--marker-color:${meta.color}">
-        ${meta.code}
+    html: `<span class="transport-marker__icon ${selectedClass}" style="--marker-color:${meta.color}">
+        ${iconSvg}
       </span>`,
     iconSize: [size, size],
     iconAnchor: [anchor, anchor],

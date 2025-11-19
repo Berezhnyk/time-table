@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { refDebounced } from '@vueuse/core'
 import { useTimetableStore } from '../stores/timetableStore'
-import { getTransportMeta } from '../utils/transport'
+import { getTransportMeta, getTransportIconSvg, getUniqueTransportTypes } from '../utils/transport'
 
 const store = useTimetableStore()
 const router = useRouter()
@@ -49,9 +49,40 @@ const groupedStops = computed(() => {
     .map((groupStop) => {
       const lines = groupStop.lines.map((line) => line.name || line.id).filter(Boolean)
       const uniqueLines = [...new Set(lines)]
+      const transportTypes = getUniqueTransportTypes(groupStop.lines)
+
+      // Create icons for each transport type
+      const transportIcons = transportTypes.map(type => {
+        // For metro, try to find a line name to get correct color
+        let lineName = null
+        if (type.toLowerCase() === 'metro') {
+          const metroLine = groupStop.lines.find(line =>
+            line.type && line.type.toLowerCase() === 'metro'
+          )
+          lineName = metroLine ? metroLine.name : null
+        }
+
+        const meta = getTransportMeta(type, lineName)
+        return {
+          svg: getTransportIconSvg(meta.label, 16),
+          color: meta.color,
+          label: meta.label
+        }
+      })
+
+      // Fallback to main transport type if no lines
+      if (transportIcons.length === 0) {
+        const transportMeta = getTransportMeta(groupStop.transportKey || groupStop.trafficType)
+        transportIcons.push({
+          svg: getTransportIconSvg(transportMeta.label, 16),
+          color: transportMeta.color,
+          label: transportMeta.label
+        })
+      }
+
       return {
         stop: groupStop,
-        transportMeta: getTransportMeta(groupStop.transportKey || groupStop.trafficType),
+        transportIcons,
         linesSummary: uniqueLines.length ? uniqueLines.slice(0, 6).join(' · ') : 'Lines TBD',
       }
     })
@@ -254,13 +285,17 @@ const findNearestStop = () => {
                 {{ group.linesSummary }}
               </p>
             </div>
-            <span
-              class="transport-chip"
-              :style="{ '--chip-color': group.transportMeta.color }"
-              :aria-label="group.transportMeta.label"
-            >
-              {{ group.transportMeta.code }}
-            </span>
+            <div class="transport-icons-group">
+              <span
+                v-for="(icon, idx) in group.transportIcons"
+                :key="idx"
+                class="transport-icon transport-icon--small"
+                :style="{ '--icon-bg-color': icon.color }"
+                :aria-label="icon.label"
+                v-html="icon.svg"
+              >
+              </span>
+            </div>
           </div>
         </button>
       </li>

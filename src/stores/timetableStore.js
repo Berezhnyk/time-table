@@ -188,6 +188,10 @@ const normalizeDeparture = (raw, fallbackPlatform = '') => {
     direction,
     minutesUntil,
     delayMinutes,
+    // Include stop coordinates if available
+    stopLat: raw.stop?.lat || null,
+    stopLon: raw.stop?.lon || null,
+    stopName: raw.stop?.name || null,
   }
 }
 
