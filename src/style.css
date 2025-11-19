@@ -581,6 +581,91 @@ input:focus {
   background: #020502;
 }
 
+.platforms-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.platform-group {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .platform-group {
+  background: rgba(4, 24, 4, 0.5);
+  border: 1px solid rgba(157, 230, 122, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.platform-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.dark .platform-group-header {
+  background: rgba(7, 28, 7, 0.8);
+  border-bottom: 1px solid rgba(157, 230, 122, 0.2);
+}
+
+.platform-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.dark .platform-title {
+  color: #9de67a;
+}
+
+.platform-badge-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: #495057;
+  color: #ffffff;
+  border: 2px solid #343a40;
+  min-width: 2.5rem;
+}
+
+.dark .platform-badge-large {
+  background: rgba(157, 230, 122, 0.25);
+  color: #d6ffd0;
+  border: 2px solid rgba(157, 230, 122, 0.5);
+}
+
+.platform-count {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-family: 'Inter', sans-serif;
+}
+
+.dark .platform-count {
+  color: rgba(157, 230, 122, 0.7);
+}
+
+.platform-group .departure-grid {
+  border-radius: 0;
+}
+
 .board-placeholder {
   padding: 4rem 1.5rem;
   text-align: center;
@@ -650,6 +735,39 @@ input:focus {
 .eta-cell {
   text-align: center;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.platform-cell {
+  text-align: center;
+}
+
+.platform-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
+  min-width: 2rem;
+}
+
+.dark .platform-badge {
+  background: rgba(157, 230, 122, 0.15);
+  color: #9de67a;
+  border: 1px solid rgba(157, 230, 122, 0.4);
+}
+
+.platform-unknown {
+  color: #adb5bd;
+}
+
+.dark .platform-unknown {
+  color: rgba(157, 230, 122, 0.4);
 }
 
 .transport-chip {
@@ -870,10 +988,11 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
+  /* Hide Planned and Live columns on medium screens */
+  .departure-grid th:nth-child(5),
+  .departure-grid td:nth-child(5),
   .departure-grid th:nth-child(6),
-  .departure-grid td:nth-child(6),
-  .departure-grid th:nth-child(7),
-  .departure-grid td:nth-child(7) {
+  .departure-grid td:nth-child(6) {
     display: none;
   }
 }
@@ -903,10 +1022,11 @@ input:focus {
     flex: 1;
   }
 
-  .departure-grid th:nth-child(5),
-  .departure-grid td:nth-child(5),
-  .departure-grid th:nth-child(8),
-  .departure-grid td:nth-child(8) {
+  /* Hide Arrives and Status columns on mobile */
+  .departure-grid th:nth-child(4),
+  .departure-grid td:nth-child(4),
+  .departure-grid th:nth-child(7),
+  .departure-grid td:nth-child(7) {
     display: none;
   }
 
@@ -916,6 +1036,28 @@ input:focus {
 
   .fullscreen-header h1 {
     font-size: 1.6rem;
+  }
+
+  .platforms-container {
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .platform-group-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .platform-title {
+    font-size: 0.9rem;
+  }
+
+  .platform-badge-large {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .platform-count {
+    font-size: 0.75rem;
   }
 }
 
@@ -1005,9 +1147,15 @@ input:focus {
   }
 
   /* Hide status column on very small screens too */
-  .departure-grid th:nth-child(8),
-  .departure-grid td:nth-child(8) {
+  .departure-grid th:nth-child(7),
+  .departure-grid td:nth-child(7) {
     display: none;
+  }
+
+  .platform-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
   }
 
   /* Keep button compact on very small screens but show text */

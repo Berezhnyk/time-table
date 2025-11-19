@@ -65,7 +65,7 @@ const stopAutoRefresh = () => {
 
 const exitFullscreen = () => {
   const target = store.selectedStop?.node
-    ? { name: 'home', params: { node: store.selectedStop.node } }
+    ? { name: 'stop', params: { node: store.selectedStop.node } }
     : { name: 'home' }
   router.push(target)
 }

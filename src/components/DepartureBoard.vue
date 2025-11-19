@@ -11,7 +11,6 @@ const store = useTimetableStore()
 const router = useRouter()
 const route = useRoute()
 const refreshTimer = ref(null)
-const isInFullscreen = ref(false)
 const autoRefreshEnabled = ref(false)
 
 // Load auto-refresh preference from localStorage
@@ -61,6 +60,58 @@ const formattedDepartures = computed(() =>
     }
   })
 )
+
+const departuresByPlatform = computed(() => {
+  const grouped = {}
+
+  // Group departures by platform
+  formattedDepartures.value.forEach(departure => {
+    const platform = departure.platform || 'Unknown'
+    if (!grouped[platform]) {
+      grouped[platform] = []
+    }
+    grouped[platform].push(departure)
+  })
+
+  // Sort platforms: numbers first, then letters, then "Unknown"
+  const sortedPlatforms = Object.keys(grouped).sort((a, b) => {
+    if (a === 'Unknown') return 1
+    if (b === 'Unknown') return -1
+
+    const aIsNumber = /^\d+$/.test(a)
+    const bIsNumber = /^\d+$/.test(b)
+
+    if (aIsNumber && !bIsNumber) return -1
+    if (!aIsNumber && bIsNumber) return 1
+
+    return a.localeCompare(b, undefined, { numeric: true })
+  })
+
+  return sortedPlatforms.map(platform => {
+    const platformDepartures = grouped[platform]
+
+    // Limit to 3 departures per line+destination combination
+    const lineDestinationCount = {}
+    const filteredDepartures = []
+
+    platformDepartures.forEach(departure => {
+      const key = `${departure.line}-${departure.destination}`
+      const count = lineDestinationCount[key] || 0
+
+      if (count < 3) {
+        filteredDepartures.push(departure)
+        lineDestinationCount[key] = count + 1
+      }
+    })
+
+    return {
+      platform,
+      departures: filteredDepartures,
+      totalCount: platformDepartures.length,
+      filteredCount: filteredDepartures.length
+    }
+  })
+})
 
 const activeInfotexts = computed(() => {
   if (!store.infotexts || !store.infotexts.length) return []
@@ -133,40 +184,11 @@ const openFullscreen = () => {
     return
   }
 
-  // Check if we're on a mobile device or if Fullscreen API is not supported
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-  const supportsFullscreen = document.fullscreenEnabled || document.webkitFullscreenEnabled
-
-  // On mobile or when Fullscreen API is not supported, navigate to fullscreen route
-  if (isMobile || !supportsFullscreen) {
-    router.push({ name: 'fullscreen', params: { node: store.selectedStop.node } })
-    return
-  }
-
-  // Try native fullscreen API for desktop
-  const element = document.querySelector('.board-panel')
-  if (!element) {
-    return
-  }
-
-  if (element.requestFullscreen) {
-    element.requestFullscreen()
-  } else if (element.webkitRequestFullscreen) {
-    element.webkitRequestFullscreen()
-  } else if (element.msRequestFullscreen) {
-    element.msRequestFullscreen()
-  }
+  // Navigate to fullscreen route instead of using native Fullscreen API
+  // This provides a consistent, scrollable experience across all platforms
+  router.push({ name: 'fullscreen', params: { node: store.selectedStop.node } })
 }
 
-const exitFullscreen = () => {
-  if (document.exitFullscreen) {
-    document.exitFullscreen()
-  } else if (document.webkitExitFullscreen) {
-    document.webkitExitFullscreen()
-  } else if (document.msExitFullscreen) {
-    document.msExitFullscreen()
-  }
-}
 
 function formatEta(value) {
   if (value === null || value === undefined) {
@@ -238,44 +260,17 @@ const stopAutoRefresh = () => {
   }
 }
 
-const handleFullscreenChange = () => {
-  const isFullscreen = Boolean(
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.msFullscreenElement
-  )
-
-  isInFullscreen.value = isFullscreen
-
-  // In fullscreen mode, always auto-refresh
-  // In normal mode, respect the user's toggle preference
-  if (isFullscreen) {
-    startAutoRefresh()
-  } else if (autoRefreshEnabled.value) {
-    startAutoRefresh()
-  } else {
-    stopAutoRefresh()
-  }
-}
-
 onMounted(() => {
-  // Load saved preference
+  // Load saved preference and start auto-refresh if enabled
   autoRefreshEnabled.value = loadAutoRefreshPreference()
 
-  // Listen for fullscreen changes
-  document.addEventListener('fullscreenchange', handleFullscreenChange)
-  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
-  document.addEventListener('msfullscreenchange', handleFullscreenChange)
-
-  // Check initial state and start auto-refresh if enabled
-  handleFullscreenChange()
+  if (autoRefreshEnabled.value) {
+    startAutoRefresh()
+  }
 })
 
 onBeforeUnmount(() => {
   stopAutoRefresh()
-  document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-  document.removeEventListener('msfullscreenchange', handleFullscreenChange)
 })
 </script>
 
@@ -321,15 +316,7 @@ onBeforeUnmount(() => {
           Refresh
         </button>
         <button
-          v-if="!isFullscreenRoute && isInFullscreen"
-          class="ghost"
-          type="button"
-          @click="exitFullscreen"
-        >
-          Exit fullscreen
-        </button>
-        <button
-          v-else-if="!isFullscreenRoute"
+          v-if="!isFullscreenRoute"
           class="ghost"
           type="button"
           :disabled="!store.hasSelection"
@@ -383,59 +370,78 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <table class="departure-grid" aria-live="polite">
-        <thead>
-          <tr>
-            <th scope="col">Mode</th>
-            <th scope="col">Line</th>
-            <th scope="col">Destination</th>
-            <th scope="col">Arrives</th>
-            <th scope="col">Platform</th>
-            <th scope="col">Planned</th>
-            <th scope="col">Live</th>
-            <th scope="col">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="departure in formattedDepartures"
-            :key="departure.id"
-            class="departure-row"
-            @click="trackVehicle(departure)"
-            role="button"
-            tabindex="0"
-            :title="`Track ${departure.line} to ${departure.destination}`"
+        <div v-if="!formattedDepartures.length" class="board-placeholder">
+          No departures are scheduled in the next hour.
+        </div>
+
+        <div v-else class="platforms-container">
+          <div
+            v-for="platformGroup in departuresByPlatform"
+            :key="platformGroup.platform"
+            class="platform-group"
           >
-            <td>
-              <span
-                class="transport-chip"
-                :style="{ '--chip-color': departure.transportMeta.color }"
-                :aria-label="departure.transportMeta.label"
-              >
-                {{ departure.transportMeta.code }}
+            <div class="platform-group-header">
+              <h3 class="platform-title">
+                Platform <span class="platform-badge-large">{{ platformGroup.platform }}</span>
+              </h3>
+              <span class="platform-count">
+                <template v-if="platformGroup.totalCount > platformGroup.filteredCount">
+                  {{ platformGroup.filteredCount }} of {{ platformGroup.totalCount }} departures
+                </template>
+                <template v-else>
+                  {{ platformGroup.departures.length }} departure{{ platformGroup.departures.length !== 1 ? 's' : '' }}
+                </template>
               </span>
-            </td>
-            <td class="line-cell">
-              <span class="line-code">{{ departure.line }}</span>
-            </td>
-            <td>{{ departure.destination }}</td>
-            <td class="eta-cell">
-              {{ departure.etaLabel }}
-            </td>
-            <td>{{ departure.platform }}</td>
-            <td>{{ departure.plannedLabel }}</td>
-            <td>{{ departure.realtimeLabel }}</td>
-            <td :class="{ delayed: departure.status.includes('+') }">
-              {{ departure.status }}
-            </td>
-          </tr>
-          <tr v-if="!formattedDepartures.length">
-            <td colspan="8" class="board-placeholder">
-              No departures are scheduled in the next hour.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+
+            <table class="departure-grid" aria-live="polite">
+              <thead>
+                <tr>
+                  <th scope="col">Mode</th>
+                  <th scope="col">Line</th>
+                  <th scope="col">Destination</th>
+                  <th scope="col">Arrives</th>
+                  <th scope="col">Planned</th>
+                  <th scope="col">Live</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="departure in platformGroup.departures"
+                  :key="departure.id"
+                  class="departure-row"
+                  @click="trackVehicle(departure)"
+                  role="button"
+                  tabindex="0"
+                  :title="`Track ${departure.line} to ${departure.destination}`"
+                >
+                  <td>
+                    <span
+                      class="transport-chip"
+                      :style="{ '--chip-color': departure.transportMeta.color }"
+                      :aria-label="departure.transportMeta.label"
+                    >
+                      {{ departure.transportMeta.code }}
+                    </span>
+                  </td>
+                  <td class="line-cell">
+                    <span class="line-code">{{ departure.line }}</span>
+                  </td>
+                  <td>{{ departure.destination }}</td>
+                  <td class="eta-cell">
+                    {{ departure.etaLabel }}
+                  </td>
+                  <td>{{ departure.plannedLabel }}</td>
+                  <td>{{ departure.realtimeLabel }}</td>
+                  <td :class="{ delayed: departure.status.includes('+') }">
+                    {{ departure.status }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
