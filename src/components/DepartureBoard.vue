@@ -70,11 +70,6 @@ const departuresByPlatform = computed(() => {
 
   // Helper function to generate smart platform names for metro
   const generatePlatformName = (departure, allDepartures) => {
-    // If platform is provided and not a dash/hyphen, use it
-    if (departure.platform && departure.platform !== '-' && departure.platform !== '—') {
-      return departure.platform
-    }
-
     // For metro stations, generate intelligent names
     if (departure.transportMeta.label === 'Metro') {
       // Get all metro lines at this stop
@@ -90,8 +85,13 @@ const departuresByPlatform = computed(() => {
         return `Metro ${sortedLines.join(' & ')}`
       }
 
-      // Single metro line - show line and direction
-      return `Metro ${departure.line} → ${departure.destination}`
+      // Single metro line - show line and destination (no arrow)
+      return `Metro ${departure.line} ${departure.destination}`
+    }
+
+    // For non-metro: if platform is provided and not a dash/hyphen, use it
+    if (departure.platform && departure.platform !== '-' && departure.platform !== '—') {
+      return departure.platform
     }
 
     return departure.platform || 'Unknown'
