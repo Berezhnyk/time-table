@@ -13,6 +13,7 @@ const themeStore = useThemeStore()
 const mapElement = ref(null)
 const locatingUser = ref(false)
 const locationError = ref(null)
+const mapInitialized = ref(false)
 
 let mapInstance
 let markerLayer
@@ -25,11 +26,24 @@ const initMap = () => {
     return
   }
 
+  // Define PID service area bounds (covers entire Czech Republic)
+  // Based on actual stop data: lat 49.01-50.95, lon 12.86-15.90
+  const pidBounds = L.latLngBounds(
+    L.latLng(48.9, 12.7),  // Southwest corner (with buffer)
+    L.latLng(51.1, 16.0)   // Northeast corner (with buffer)
+  )
+
   mapInstance = L.map(mapElement.value, {
     zoomControl: false,
+    preferCanvas: true, // Use canvas for better performance
+    maxBounds: pidBounds, // Restrict panning to PID service area
+    maxBoundsViscosity: 1.0, // Make bounds strict (don't allow dragging outside)
+    minZoom: 8, // Allow viewing entire Czech Republic
+    maxZoom: 18, // Reasonable max zoom for transit stops
   }).setView([50.0755, 14.4378], 12)
 
   updateTileLayer()
+  mapInitialized.value = true
 
   L.control
     .zoom({
@@ -62,18 +76,22 @@ const updateTileLayer = () => {
   // Check if dark mode is active
   const isDark = themeStore.theme === 'dark'
 
-  // Add tile layer - use dark tiles if in dark mode
+  // Use CartoDB tiles - lighter and faster than full OSM tiles
   const tileUrl = isDark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 
-  const attribution = isDark
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
 
   currentTileLayer = L.tileLayer(tileUrl, {
     attribution: attribution,
-    maxZoom: 19,
+    maxZoom: 18,
+    // Performance optimizations
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    keepBuffer: 2,
+    // Bounds to only load tiles for PID service area (Czech Republic)
+    bounds: L.latLngBounds(L.latLng(48.9, 12.7), L.latLng(51.1, 16.0)),
   }).addTo(mapInstance)
 }
 
@@ -277,13 +295,41 @@ const findNearestStop = () => {
 }
 
 onMounted(() => {
-  initMap()
-  // Highlight and focus the selected stop if one is already selected when component mounts
-  if (store.selectedStop) {
-    setTimeout(() => {
-      highlightSelectedStop()
-      focusSelectedStop()
-    }, 100)
+  const deferredInit = () => {
+    initMap()
+    // Highlight and focus the selected stop if one is already selected when component mounts
+    if (store.selectedStop) {
+      setTimeout(() => {
+        highlightSelectedStop()
+        focusSelectedStop()
+      }, 100)
+    }
+  }
+
+  // Use Intersection Observer to lazy load the map only when it's about to be visible
+  // This prevents map tiles from blocking LCP
+  if ('IntersectionObserver' in window && mapElement.value) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !mapInstance) {
+            deferredInit()
+            observer.disconnect()
+          }
+        })
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before the map is visible
+      }
+    )
+    observer.observe(mapElement.value)
+  } else {
+    // Fallback: defer with requestIdleCallback
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(deferredInit, { timeout: 1500 })
+    } else {
+      setTimeout(deferredInit, 500)
+    }
   }
 })
 
@@ -370,7 +416,12 @@ watch(
       </button>
     </header>
     <div v-if="locationError" class="location-error">{{ locationError }}</div>
-    <div ref="mapElement" class="map-container" :aria-label="t('stopMap.mapAriaLabel')" />
+    <div
+      ref="mapElement"
+      class="map-container"
+      :class="{ 'map-container--loading': !mapInitialized }"
+      :aria-label="t('stopMap.mapAriaLabel')"
+    />
   </section>
 </template>
 
