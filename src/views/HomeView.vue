@@ -12,6 +12,11 @@ const route = useRoute()
 const router = useRouter()
 const syncingRoute = ref(false)
 
+const goHome = () => {
+  store.clearSelection()
+  router.push({ name: 'home' })
+}
+
 const updatePageTitle = () => {
   if (store.selectedStop) {
     const stopName = store.selectedStop.altName || store.selectedStop.displayName
@@ -86,7 +91,7 @@ watch(
     <header class="app-header">
       <div>
         <p class="eyebrow">PID Open Data</p>
-        <h1>timetable.guide</h1>
+        <h1 class="app-title" @click="goHome">timetable.guide</h1>
         <p class="subtext">
           Search or pick any PID stop to see its live departures, powered by
           <a

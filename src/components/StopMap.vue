@@ -9,11 +9,14 @@ import { getTransportMeta } from '../utils/transport'
 const store = useTimetableStore()
 const themeStore = useThemeStore()
 const mapElement = ref(null)
+const locatingUser = ref(false)
+const locationError = ref(null)
 
 let mapInstance
 let markerLayer
 let markers = new Map()
 let currentTileLayer = null
+let userMarker = null
 
 const initMap = () => {
   if (mapInstance || !mapElement.value) {
@@ -109,12 +112,8 @@ const renderMarkers = () => {
 }
 
 const highlightSelectedStop = () => {
-  if (!store.selectedStop) {
-    return
-  }
-
   markers.forEach(({ marker, stop }) => {
-    const isSelected = stop.node === store.selectedStop.node
+    const isSelected = store.selectedStop && stop.node === store.selectedStop.node
     marker.setIcon(createMarkerIcon(stop, isSelected))
   })
 
@@ -131,6 +130,98 @@ const focusSelectedStop = () => {
   mapInstance.setView([store.selectedStop.lat, store.selectedStop.lon], 16, {
     animate: true,
   })
+}
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371 // Earth's radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+const findNearestStop = () => {
+  if (!navigator.geolocation) {
+    locationError.value = 'Geolocation is not supported by your browser'
+    return
+  }
+
+  locatingUser.value = true
+  locationError.value = null
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const userLat = position.coords.latitude
+      const userLon = position.coords.longitude
+
+      // Remove existing user marker if any
+      if (userMarker && mapInstance) {
+        mapInstance.removeLayer(userMarker)
+      }
+
+      // Add user location marker
+      if (mapInstance) {
+        userMarker = L.marker([userLat, userLon], {
+          icon: L.divIcon({
+            className: 'user-location-marker',
+            html: '<span class="user-location-marker__dot"></span>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          }),
+        })
+        userMarker.bindTooltip('Your location', { sticky: true })
+        userMarker.addTo(mapInstance)
+      }
+
+      // Find nearest stop
+      let nearestStop = null
+      let minDistance = Infinity
+
+      store.stops.forEach((stop) => {
+        const distance = calculateDistance(userLat, userLon, stop.lat, stop.lon)
+        if (distance < minDistance) {
+          minDistance = distance
+          nearestStop = stop
+        }
+      })
+
+      if (nearestStop) {
+        store.selectStop(nearestStop)
+        if (mapInstance) {
+          mapInstance.setView([nearestStop.lat, nearestStop.lon], 16, {
+            animate: true,
+          })
+        }
+      }
+
+      locatingUser.value = false
+    },
+    (error) => {
+      locatingUser.value = false
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          locationError.value = 'Location access denied. Please enable location permissions.'
+          break
+        case error.POSITION_UNAVAILABLE:
+          locationError.value = 'Location information unavailable.'
+          break
+        case error.TIMEOUT:
+          locationError.value = 'Location request timed out.'
+          break
+        default:
+          locationError.value = 'An error occurred while getting your location.'
+      }
+      setTimeout(() => {
+        locationError.value = null
+      }, 5000)
+    }
+  )
 }
 
 onMounted(() => {
@@ -168,12 +259,52 @@ watch(
 </script>
 
 <template>
-  <section class="panel map-panel">
+  <section v-show="!store.stopsLoading" class="panel map-panel">
     <header class="panel-header">
       <div>
         <h2>Or pick via map</h2>
       </div>
+      <button
+        @click="findNearestStop"
+        :disabled="locatingUser"
+        class="locate-button"
+        :class="{ 'locate-button--loading': locatingUser }"
+        aria-label="Find nearest stop"
+      >
+        <svg
+          v-if="!locatingUser"
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <svg
+          v-else
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="spinner"
+        >
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+        </svg>
+        <span class="locate-button__text">{{ locatingUser ? 'Locating...' : 'Near Me' }}</span>
+      </button>
     </header>
+    <div v-if="locationError" class="location-error">{{ locationError }}</div>
     <div ref="mapElement" class="map-container" aria-label="Interactive map of PID stops" />
   </section>
 </template>

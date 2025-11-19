@@ -37,6 +37,38 @@ const formattedDepartures = computed(() =>
   })
 )
 
+const activeInfotexts = computed(() => {
+  if (!store.infotexts || !store.infotexts.length) return []
+
+  const now = new Date()
+
+  // Filter infotexts that are currently valid and relevant to this stop
+  return store.infotexts.filter(infotext => {
+    // Check validity period
+    const validFrom = infotext.valid_from ? new Date(infotext.valid_from) : null
+    const validTo = infotext.valid_to ? new Date(infotext.valid_to) : null
+
+    if (validFrom && now < validFrom) return false
+    if (validTo && now > validTo) return false
+
+    // Check if it's related to the current stop (if related_stops exists)
+    if (infotext.related_stops && infotext.related_stops.length > 0 && store.selectedStop) {
+      // Check if any of the selectedStop's gtfsIds match the related stops
+      const isRelated = infotext.related_stops.some(relatedStopId => {
+        return store.selectedStop.gtfsIds?.some(gtfsId => {
+          return gtfsId === relatedStopId ||
+                 gtfsId.replace(/P$/, '') === relatedStopId ||
+                 relatedStopId.replace(/P$/, '') === gtfsId
+        })
+      })
+
+      if (!isRelated) return false
+    }
+
+    return true
+  })
+})
+
 function formatTime(value) {
   if (!value) {
     return '—'
@@ -130,6 +162,8 @@ const trackVehicle = (departure) => {
     tripId: tripId,
     line: departure.line,
     destination: departure.destination,
+    realtimeTime: departure.realtimeTime,
+    plannedTime: departure.plannedTime,
   })
 
   // Navigate to vehicle tracking page with stop context
@@ -210,7 +244,27 @@ const trackVehicle = (departure) => {
         </p>
       </div>
 
-      <table v-else class="departure-grid" aria-live="polite">
+      <div v-else>
+        <!-- Display infotexts as alerts -->
+        <div v-if="activeInfotexts.length > 0" class="infotexts-container">
+          <div
+            v-for="(infotext, index) in activeInfotexts"
+            :key="index"
+            class="infotext-alert"
+            :class="{ 'infotext-inline': infotext.display_type === 'inline' }"
+            role="alert"
+          >
+            <div class="infotext-icon">⚠</div>
+            <div class="infotext-content">
+              <p class="infotext-text">{{ infotext.text_en || infotext.text }}</p>
+              <p v-if="infotext.text_en && infotext.text && infotext.text !== infotext.text_en" class="infotext-text-secondary">
+                {{ infotext.text }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <table class="departure-grid" aria-live="polite">
         <thead>
           <tr>
             <th scope="col">Mode</th>
@@ -263,6 +317,7 @@ const trackVehicle = (departure) => {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <footer class="board-footer">

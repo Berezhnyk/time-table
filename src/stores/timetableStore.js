@@ -243,6 +243,7 @@ export const useTimetableStore = defineStore('timetable', {
     departuresLoading: false,
     departuresError: null,
     lastUpdated: null,
+    infotexts: [],
     trackedVehicle: null,
     vehicleLoading: false,
     vehicleError: null,
@@ -292,6 +293,7 @@ export const useTimetableStore = defineStore('timetable', {
       this.selectedStop = null
       this.departures = []
       this.departuresError = null
+      this.infotexts = []
     },
     async fetchDepartures() {
       if (!this.selectedStop) {
@@ -342,7 +344,11 @@ export const useTimetableStore = defineStore('timetable', {
         const departures =
           data?.departures?.map((item) => normalizeDeparture(item))?.filter(Boolean) || []
 
+        // Extract infotexts from the API response
+        const infotexts = data?.infotexts || []
+
         this.departures = departures
+        this.infotexts = infotexts
         this.lastUpdated = new Date().toISOString()
       } catch (error) {
         if (error.response?.status === 401) {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
 import { useThemeStore } from '../stores/themeStore'
@@ -22,7 +22,16 @@ const updateTimer = ref(null)
 const trackingError = ref(null)
 const lastUpdate = ref(null)
 const nextStopName = ref(null)
+const currentStopName = ref(null)
+const selectedStopArrivalTime = ref(null)
+const locatingUser = ref(false)
+const userLocation = ref(null)
+const showResetView = ref(false)
 let currentTileLayer = null
+let userMarker = null
+let watchId = null
+let userInteractedWithMap = false
+let initialBoundsSet = false
 
 const tripId = computed(() => route.params.tripId)
 const stopNode = computed(() => route.params.node)
@@ -56,6 +65,19 @@ const distanceToStop = computed(() => {
   return `${(distanceM / 1000).toFixed(2)} km`
 })
 
+const distanceFromUser = computed(() => {
+  if (!vehicleData.value || !userLocation.value) return null
+
+  const userLatLng = L.latLng(userLocation.value.lat, userLocation.value.lon)
+  const vehicleLatLng = L.latLng(vehicleData.value.lat, vehicleData.value.lon)
+  const distanceM = userLatLng.distanceTo(vehicleLatLng)
+
+  if (distanceM < 1000) {
+    return `${Math.round(distanceM)} m`
+  }
+  return `${(distanceM / 1000).toFixed(2)} km`
+})
+
 const lastUpdateLabel = computed(() => {
   if (!lastUpdate.value) return '—'
   return new Date(lastUpdate.value).toLocaleTimeString([], {
@@ -80,6 +102,40 @@ const minutesToNextStop = computed(() => {
   const now = new Date()
   const diff = Math.round((arrivalDate - now) / 60000)
   return Math.max(0, diff)
+})
+
+const currentStopTime = computed(() => {
+  if (!vehicleData.value?.lastStop?.arrival_time) return null
+  const arrivalDate = new Date(vehicleData.value.lastStop.arrival_time)
+  return arrivalDate.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
+const minutesToCurrentStop = computed(() => {
+  if (!vehicleData.value?.lastStop?.arrival_time) return null
+  const arrivalDate = new Date(vehicleData.value.lastStop.arrival_time)
+  const now = new Date()
+  const diff = Math.round((arrivalDate - now) / 60000)
+  return diff
+})
+
+const selectedStopTime = computed(() => {
+  if (!selectedStopArrivalTime.value) return null
+  const arrivalDate = new Date(selectedStopArrivalTime.value)
+  return arrivalDate.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
+const minutesToSelectedStop = computed(() => {
+  if (!selectedStopArrivalTime.value) return null
+  const arrivalDate = new Date(selectedStopArrivalTime.value)
+  const now = new Date()
+  const diff = Math.round((arrivalDate - now) / 60000)
+  return diff
 })
 
 const bearingLabel = computed(() => {
@@ -111,9 +167,9 @@ const statusPositionLabel = computed(() => {
   return state.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 })
 
-const fetchNextStopName = async (stopId) => {
+const fetchStopName = async (stopId, targetRef) => {
   if (!stopId) {
-    nextStopName.value = null
+    targetRef.value = null
     return
   }
 
@@ -128,15 +184,114 @@ const fetchNextStopName = async (stopId) => {
   })
 
   if (stop) {
-    nextStopName.value = stop.displayName
+    targetRef.value = stop.displayName
   } else {
     // If we can't find it in the store, try to fetch from Golemio API
     try {
       const { data } = await axios.get(`/api/golemio/gtfs/stops/${encodeURIComponent(stopId)}`)
-      nextStopName.value = data.stop_name || data.name || 'Unknown Stop'
+      targetRef.value = data.stop_name || data.name || 'Unknown Stop'
     } catch (error) {
-      nextStopName.value = 'Next Stop'
+      targetRef.value = 'Stop'
     }
+  }
+}
+
+const fetchNextStopName = async (stopId) => {
+  await fetchStopName(stopId, nextStopName)
+}
+
+const fetchCurrentStopName = async (stopId) => {
+  await fetchStopName(stopId, currentStopName)
+}
+
+const fetchSelectedStopArrival = async () => {
+  if (!tripId.value || !store.selectedStop) {
+    selectedStopArrivalTime.value = null
+    return
+  }
+
+  // First, try to use the tracking target departure time if available
+  if (store.trackingTarget?.realtimeTime || store.trackingTarget?.plannedTime) {
+    selectedStopArrivalTime.value = store.trackingTarget.realtimeTime || store.trackingTarget.plannedTime
+    return
+  }
+
+  // If we don't have a tracking target, try to find the departure in the loaded departures
+  let departure = store.departures.find(d => d.id === tripId.value || d.gtfsTripId === tripId.value)
+
+  // If departures aren't loaded yet (page refresh), fetch them first
+  if (!departure && store.selectedStop && (!store.departures || store.departures.length === 0)) {
+    try {
+      await store.fetchDepartures()
+      departure = store.departures.find(d => d.id === tripId.value || d.gtfsTripId === tripId.value)
+    } catch (error) {
+      // Continue to try other methods
+    }
+  }
+
+  // If we found the departure in the current departures, use it
+  if (departure) {
+    selectedStopArrivalTime.value = departure.realtimeTime || departure.plannedTime
+    return
+  }
+
+  // Try to fetch from GTFS API as a last resort
+  try {
+    const headers = {
+      Accept: 'application/json',
+    }
+
+    // Only send API key in dev mode
+    if (import.meta.env.DEV && import.meta.env.VITE_GOLEMIO_API_KEY) {
+      headers['X-Access-Token'] = import.meta.env.VITE_GOLEMIO_API_KEY
+    }
+
+    // Fetch trip stop times from Golemio API
+    let endpoint
+    let params = {}
+
+    if (import.meta.env.DEV) {
+      endpoint = `/golemio/v2/gtfs/trips/${encodeURIComponent(tripId.value)}/stoptimes`
+    } else {
+      endpoint = '/api/golemio'
+      params.path = `gtfs/trips/${encodeURIComponent(tripId.value)}/stoptimes`
+    }
+
+    const { data } = await axios.get(endpoint, {
+      headers,
+      params,
+      timeout: 15000,
+    })
+
+    // Find the stop time for our selected stop
+    // Match by GTFS ID from the selected stop
+    const stopTimes = data.stop_times || data.stopTimes || []
+
+    if (store.selectedStop.gtfsIds && store.selectedStop.gtfsIds.length > 0) {
+      const stopTime = stopTimes.find(st => {
+        const stopId = st.stop_id || st.stop?.stop_id
+        return store.selectedStop.gtfsIds.some(gtfsId => {
+          return stopId === gtfsId || stopId?.replace(/P$/, '') === gtfsId || gtfsId?.replace(/P$/, '') === stopId
+        })
+      })
+
+      if (stopTime) {
+        // Get arrival time - prefer actual/predicted over scheduled
+        selectedStopArrivalTime.value =
+          stopTime.arrival_time?.predicted ||
+          stopTime.arrival_time?.actual ||
+          stopTime.arrival_time?.scheduled ||
+          stopTime.arrival_time ||
+          null
+      } else {
+        selectedStopArrivalTime.value = null
+      }
+    } else {
+      selectedStopArrivalTime.value = null
+    }
+  } catch (error) {
+    // If all methods fail, we just won't show the selected stop section
+    selectedStopArrivalTime.value = null
   }
 }
 
@@ -176,11 +331,30 @@ const initMap = () => {
   if (map.value) return
 
   // Initialize map centered on Prague
-  map.value = L.map(mapContainer.value, {
-    zoomControl: true,
-  }).setView([50.0755, 14.4378], 13)
+  // Use markRaw to prevent Vue from making the Leaflet map reactive
+  map.value = markRaw(
+    L.map(mapContainer.value, {
+      zoomControl: true,
+      preferCanvas: true, // Use Canvas renderer instead of SVG to prevent polyline rendering errors during zoom
+    }).setView([50.0755, 14.4378], 13)
+  )
 
   updateTileLayer()
+
+  // Listen for user interactions to prevent auto-recentering
+  map.value.on('dragstart', () => {
+    userInteractedWithMap = true
+    showResetView.value = true
+  })
+
+  map.value.on('zoomstart', (e) => {
+    // Only mark as user interaction if it's not programmatic
+    // Leaflet doesn't provide a direct way to distinguish, but we can check
+    // if the zoom was triggered by user (wheel/buttons) vs fitBounds
+    if (!e.originalEvent && !map.value._animatingZoom) return
+    userInteractedWithMap = true
+    showResetView.value = true
+  })
 }
 
 const updateTileLayer = () => {
@@ -220,7 +394,10 @@ const updateVehiclePosition = () => {
   const position = [lat, lon]
   const color = transportMeta.value?.color || '#666'
 
-  // Update or create vehicle marker
+  // Always update markers and lines, but only adjust map bounds if user hasn't interacted
+  // This ensures the line connecting stop and vehicle updates in real-time
+
+  // Update or create vehicle marker (always update position)
   if (vehicleMarker.value) {
     vehicleMarker.value.setLatLng(position)
     vehicleMarker.value.setIcon(createVehicleIcon(color))
@@ -288,8 +465,9 @@ const updateVehiclePosition = () => {
       }
     }
 
-    // Create or update route line
+    // Always update the route line (even when user has interacted)
     if (routeLine.value) {
+      // Update existing line
       routeLine.value.setLatLngs(routeCoords)
       routeLine.value.setStyle({
         color: color,
@@ -297,16 +475,25 @@ const updateVehiclePosition = () => {
         opacity: isActualRoute ? 0.9 : 0.8,
         dashArray: isActualRoute ? null : '12, 8',
       })
+
+      // Update popup with current distance
+      routeLine.value.setPopupContent(`
+        <strong>Distance:</strong> ${distance} km<br>
+        <small>${isActualRoute ? 'Actual route path' : 'Direct line from stop to vehicle'}</small>
+      `)
     } else {
-      routeLine.value = L.polyline(routeCoords, {
-        color: color,
-        weight: isActualRoute ? 4 : 5,
-        opacity: isActualRoute ? 0.9 : 0.8,
-        dashArray: isActualRoute ? null : '12, 8',
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: true,
-      }).addTo(map.value)
+      // Create new line - use markRaw to prevent Vue reactivity on Leaflet objects
+      routeLine.value = markRaw(
+        L.polyline(routeCoords, {
+          color: color,
+          weight: isActualRoute ? 4 : 5,
+          opacity: isActualRoute ? 0.9 : 0.8,
+          dashArray: isActualRoute ? null : '12, 8',
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: true,
+        }).addTo(map.value)
+      )
 
       routeLine.value.bindPopup(`
         <strong>Distance:</strong> ${distance} km<br>
@@ -314,45 +501,44 @@ const updateVehiclePosition = () => {
       `)
     }
 
-    // Update popup with current distance
-    routeLine.value.setPopupContent(`
-      <strong>Distance:</strong> ${distance} km<br>
-      <small>${isActualRoute ? 'Actual route path' : 'Direct line from stop to vehicle'}</small>
-    `)
+    // Only adjust map view on initial load or if user hasn't interacted
+    if (!initialBoundsSet || !userInteractedWithMap) {
+      // Fit bounds to show both stop and vehicle (and route if available)
+      let boundsPoints = [stopPos, position]
 
-    // Fit bounds to show both stop and vehicle (and route if available)
-    let boundsPoints = [stopPos, position]
+      // If we have actual route data, include all route points for better framing
+      if (isActualRoute && routeCoords.length > 2) {
+        boundsPoints = routeCoords
+      }
 
-    // If we have actual route data, include all route points for better framing
-    if (isActualRoute && routeCoords.length > 2) {
-      boundsPoints = routeCoords
+      const bounds = L.latLngBounds(boundsPoints)
+
+      // Adjust padding based on screen size
+      const isMobile = window.innerWidth <= 768
+
+      // If very close (< 200m), limit zoom to avoid overlap
+      const maxZoomLevel = distanceMeters < 200 ? 15 : (isMobile ? 16 : 17)
+
+      const paddingOptions = isMobile
+        ? {
+            // Mobile: map is 50vh, so use smaller balanced padding to center points in map area
+            paddingTopLeft: [20, 40],
+            paddingBottomRight: [20, 40],
+            maxZoom: maxZoomLevel,
+          }
+        : {
+            paddingTopLeft: [80, 80],      // Desktop: left and top padding
+            paddingBottomRight: [380, 80], // Desktop: account for sidebar on right
+            maxZoom: maxZoomLevel,
+          }
+
+      map.value.fitBounds(bounds, paddingOptions)
+      initialBoundsSet = true
     }
-
-    const bounds = L.latLngBounds(boundsPoints)
-
-    // Adjust padding based on screen size
-    const isMobile = window.innerWidth <= 768
-
-    // If very close (< 200m), limit zoom to avoid overlap
-    const maxZoomLevel = distanceMeters < 200 ? 15 : (isMobile ? 16 : 17)
-
-    const paddingOptions = isMobile
-      ? {
-          // Mobile: map is 50vh, so use smaller balanced padding to center points in map area
-          paddingTopLeft: [20, 40],
-          paddingBottomRight: [20, 40],
-          maxZoom: maxZoomLevel,
-        }
-      : {
-          paddingTopLeft: [80, 80],      // Desktop: left and top padding
-          paddingBottomRight: [380, 80], // Desktop: account for sidebar on right
-          maxZoom: maxZoomLevel,
-        }
-
-    map.value.fitBounds(bounds, paddingOptions)
-  } else {
-    // No stop selected, just center on vehicle
+  } else if (!initialBoundsSet || !userInteractedWithMap) {
+    // No stop selected, just center on vehicle (only on initial load)
     map.value.setView(position, 15)
+    initialBoundsSet = true
   }
 
   lastUpdate.value = new Date()
@@ -367,6 +553,9 @@ const startTracking = async () => {
   try {
     await store.fetchVehiclePosition(tripId.value)
     updateVehiclePosition()
+
+    // Fetch arrival time for selected stop
+    await fetchSelectedStopArrival()
 
     // Set up auto-refresh every 5 seconds
     updateTimer.value = setInterval(async () => {
@@ -389,6 +578,149 @@ const stopTracking = () => {
     updateTimer.value = null
   }
   store.clearVehicleTracking()
+}
+
+const updateUserMarker = (lat, lon, fitBounds = false) => {
+  userLocation.value = { lat, lon }
+
+  // Remove existing user marker if any
+  if (userMarker && map.value) {
+    map.value.removeLayer(userMarker)
+  }
+
+  // Add user location marker
+  if (map.value) {
+    userMarker = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: 'user-location-marker',
+        html: '<span class="user-location-marker__dot"></span>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      }),
+      zIndexOffset: 950,
+    }).addTo(map.value)
+
+    userMarker.bindPopup(`
+      <strong>Your Location</strong><br>
+      <small>Current position</small>
+    `)
+
+    // Update map bounds to include user location only if requested
+    if (fitBounds) {
+      const points = [[lat, lon]]
+
+      if (vehicleData.value) {
+        points.push([vehicleData.value.lat, vehicleData.value.lon])
+      }
+
+      if (store.selectedStop) {
+        points.push([store.selectedStop.lat, store.selectedStop.lon])
+      }
+
+      if (points.length > 1) {
+        const bounds = L.latLngBounds(points)
+        const isMobile = window.innerWidth <= 768
+
+        const paddingOptions = isMobile
+          ? {
+              paddingTopLeft: [20, 40],
+              paddingBottomRight: [20, 40],
+              maxZoom: 16,
+            }
+          : {
+              paddingTopLeft: [80, 80],
+              paddingBottomRight: [380, 80],
+              maxZoom: 16,
+            }
+
+        map.value.fitBounds(bounds, paddingOptions)
+      } else {
+        map.value.setView([lat, lon], 15)
+      }
+    }
+  }
+}
+
+const startWatchingUserLocation = () => {
+  if (!navigator.geolocation) return
+
+  // Try to get initial position without showing error
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      updateUserMarker(position.coords.latitude, position.coords.longitude, false)
+    },
+    () => {
+      // Silently fail on initial attempt - user can click button if they want
+    },
+    { timeout: 5000, maximumAge: 60000 }
+  )
+
+  // Watch position for continuous updates
+  watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      updateUserMarker(position.coords.latitude, position.coords.longitude, false)
+    },
+    () => {
+      // Silently fail - marker just won't update
+    },
+    { enableHighAccuracy: false, maximumAge: 30000 }
+  )
+}
+
+const stopWatchingUserLocation = () => {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+  }
+}
+
+const resetView = () => {
+  userInteractedWithMap = false
+  showResetView.value = false
+  // Trigger a re-fit of the bounds
+  updateVehiclePosition()
+}
+
+const showUserLocation = () => {
+  if (!navigator.geolocation) {
+    trackingError.value = 'Geolocation is not supported by your browser'
+    return
+  }
+
+  locatingUser.value = true
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      // User explicitly clicked the button, so allow recentering
+      userInteractedWithMap = false
+      showResetView.value = false
+      updateUserMarker(position.coords.latitude, position.coords.longitude, true)
+      locatingUser.value = false
+    },
+    (error) => {
+      locatingUser.value = false
+      let errorMsg = 'Failed to get your location'
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMsg = 'Location access denied. Please enable location permissions.'
+          break
+        case error.POSITION_UNAVAILABLE:
+          errorMsg = 'Location information unavailable.'
+          break
+        case error.TIMEOUT:
+          errorMsg = 'Location request timed out.'
+          break
+      }
+
+      trackingError.value = errorMsg
+      setTimeout(() => {
+        if (trackingError.value === errorMsg) {
+          trackingError.value = null
+        }
+      }, 5000)
+    }
+  )
 }
 
 const goBack = () => {
@@ -423,6 +755,11 @@ watch(vehicleData, () => {
     // Fetch next stop name if available
     if (vehicleData.value.nextStop?.id) {
       fetchNextStopName(vehicleData.value.nextStop.id)
+    }
+
+    // Fetch current/last stop name if available
+    if (vehicleData.value.lastStop?.id) {
+      fetchCurrentStopName(vehicleData.value.lastStop.id)
     }
 
     // Recalculate bounds after DOM updates and sidebar content is rendered
@@ -461,10 +798,12 @@ onMounted(async () => {
   }
 
   startTracking()
+  startWatchingUserLocation()
 })
 
 onUnmounted(() => {
   stopTracking()
+  stopWatchingUserLocation()
   if (map.value) {
     map.value.remove()
     map.value = null
@@ -495,10 +834,78 @@ onUnmounted(() => {
       <div v-else class="vehicle-info">
         <span class="loading-text">Loading vehicle data...</span>
       </div>
+
+      <button
+        v-if="!userLocation"
+        @click.stop="showUserLocation"
+        :disabled="locatingUser"
+        class="locate-button"
+        :class="{ 'locate-button--loading': locatingUser }"
+        aria-label="Show my location"
+        title="Show my location on map"
+      >
+        <svg
+          v-if="!locatingUser"
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <svg
+          v-else
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="spinner"
+        >
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+        </svg>
+        <span class="locate-button__text">{{ locatingUser ? 'Locating...' : 'My Location' }}</span>
+      </button>
     </header>
 
     <div class="tracker-content">
-      <div ref="mapContainer" class="tracker-map"></div>
+      <div class="tracker-map-wrapper">
+        <div ref="mapContainer" class="tracker-map"></div>
+
+        <button
+          v-if="showResetView"
+          @click="resetView"
+          class="reset-view-button"
+          aria-label="Re-center map on vehicle"
+          title="Re-center map on vehicle"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="reset-view-button__text">Re-center</span>
+        </button>
+      </div>
 
       <aside class="tracker-sidebar">
         <div v-if="trackingError" class="tracker-error" role="alert">
@@ -514,6 +921,32 @@ onUnmounted(() => {
             <p v-if="vehicleData.isCanceled" class="warning-text" style="margin-top: 0.5rem;">
               Service Canceled
             </p>
+          </div>
+
+          <div v-if="store.selectedStop && selectedStopArrivalTime" class="detail-section selected-stop-highlight">
+            <h3>Your Stop</h3>
+            <p class="selected-stop-name">{{ store.selectedStop.displayName }}</p>
+            <div class="selected-stop-time">
+              <span v-if="selectedStopTime" class="time">{{ selectedStopTime }}</span>
+              <span v-if="minutesToSelectedStop !== null" class="countdown">
+                <template v-if="minutesToSelectedStop > 0">in {{ minutesToSelectedStop }} min</template>
+                <template v-else-if="minutesToSelectedStop === 0">arriving now</template>
+                <template v-else>departed {{ Math.abs(minutesToSelectedStop) }} min ago</template>
+              </span>
+            </div>
+          </div>
+
+          <div v-if="vehicleData.lastStop" class="detail-section current-stop-highlight">
+            <h3>Current Stop</h3>
+            <p class="current-stop-name">{{ currentStopName || 'Loading...' }}</p>
+            <div class="current-stop-time">
+              <span v-if="currentStopTime" class="time">{{ currentStopTime }}</span>
+              <span v-if="minutesToCurrentStop !== null" class="countdown">
+                <template v-if="minutesToCurrentStop > 0">in {{ minutesToCurrentStop }} min</template>
+                <template v-else-if="minutesToCurrentStop === 0">arriving now</template>
+                <template v-else>{{ Math.abs(minutesToCurrentStop) }} min ago</template>
+              </span>
+            </div>
           </div>
 
           <div v-if="vehicleData.nextStop" class="detail-section next-stop-highlight">
@@ -560,10 +993,16 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="distanceToStop" class="detail-section">
+          <div v-if="distanceToStop || distanceFromUser" class="detail-section">
             <h3>Distance</h3>
-            <p class="distance-value">{{ distanceToStop }}</p>
-            <p class="caption">from {{ store.selectedStop?.displayName || 'origin stop' }}</p>
+            <div v-if="distanceToStop" class="distance-item">
+              <p class="distance-value">{{ distanceToStop }}</p>
+              <p class="caption">from {{ store.selectedStop?.displayName || 'origin stop' }}</p>
+            </div>
+            <div v-if="distanceFromUser" class="distance-item" style="margin-top: 0.5rem">
+              <p class="distance-value">{{ distanceFromUser }}</p>
+              <p class="caption">from your location</p>
+            </div>
           </div>
 
           <div class="detail-section">
@@ -645,9 +1084,64 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.tracker-map {
+.tracker-map-wrapper {
   flex: 1;
   position: relative;
+}
+
+.tracker-map {
+  width: 100%;
+  height: 100%;
+}
+
+.reset-view-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background-color: rgba(214, 255, 208, 0.95);
+  border: 1px solid #9de67a;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #041804;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.reset-view-button:hover {
+  background-color: rgba(157, 230, 122, 0.98);
+  border-color: #7bc961;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 4px 16px rgba(157, 230, 122, 0.4);
+}
+
+.reset-view-button:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.reset-view-button__text {
+  line-height: 1;
+}
+
+.dark .reset-view-button {
+  background-color: rgba(4, 24, 4, 0.95);
+  border-color: #9de67a;
+  color: #9de67a;
+}
+
+.dark .reset-view-button:hover {
+  background-color: rgba(10, 42, 8, 0.98);
+  border-color: #d6ffd0;
+  color: #d6ffd0;
+  box-shadow: 0 4px 16px rgba(157, 230, 122, 0.3);
 }
 
 .tracker-sidebar {
@@ -794,6 +1288,80 @@ onUnmounted(() => {
 }
 
 /* New UI elements */
+.selected-stop-highlight {
+  background: linear-gradient(135deg, rgba(157, 230, 122, 0.15) 0%, rgba(157, 230, 122, 0.05) 100%);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(157, 230, 122, 0.5);
+  box-shadow: 0 2px 8px rgba(157, 230, 122, 0.1);
+}
+
+.selected-stop-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.selected-stop-time {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-top: 0.5rem;
+}
+
+.selected-stop-time .time {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #9de67a;
+}
+
+.selected-stop-time .countdown {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0.3rem 0.6rem;
+  background: rgba(157, 230, 122, 0.2);
+  border: 1px solid rgba(157, 230, 122, 0.3);
+  border-radius: 0.3rem;
+}
+
+.current-stop-highlight {
+  background: var(--surface-dark);
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(157, 230, 122, 0.3);
+  border-left: 3px solid rgba(157, 230, 122, 0.6);
+}
+
+.current-stop-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.4rem 0;
+}
+
+.current-stop-time {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  margin-top: 0.4rem;
+}
+
+.current-stop-time .time {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.current-stop-time .countdown {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.2rem 0.4rem;
+  background: var(--surface-base);
+  border-radius: 0.25rem;
+}
+
 .next-stop-highlight {
   background: var(--surface-dark);
   padding: 0.75rem;
@@ -890,8 +1458,19 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
-  .tracker-map {
+  .tracker-map-wrapper {
     height: 50vh;
+  }
+
+  .tracker-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .reset-view-button {
+    bottom: 10px;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
   }
 
   .tracker-sidebar {
