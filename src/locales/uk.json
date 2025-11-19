@@ -1,0 +1,153 @@
+{
+  "common": {
+    "loading": "Завантаження...",
+    "error": "Помилка",
+    "refresh": "Оновити",
+    "clear": "Очистити",
+    "back": "Назад",
+    "close": "Закрити",
+    "node": "Вузол",
+    "min": "хв",
+    "mins": "хв"
+  },
+  "header": {
+    "eyebrow": "PID Open Data",
+    "title": "timetable.guide",
+    "subtitle": "Шукайте або виберіть будь-яку зупинку PID, щоб переглянути відправлення в реальному часі на основі {link}.",
+    "publicDatasets": "відкритих даних"
+  },
+  "footer": {
+    "madeBy": "Створив"
+  },
+  "stopSearch": {
+    "title": "Виберіть зупинку",
+    "searchLabel": "Шукати за назвою",
+    "searchPlaceholder": "Введіть, наприклад, Anděl, Muzeum, Karlovo náměstí…",
+    "nearMe": "Поблизу мене",
+    "locating": "Визначаю місце...",
+    "loadingStops": "Завантажую офіційний список зупинок PID…",
+    "noMatches": "Жодна зупинка не відповідає запиту \"{query}\".",
+    "unknownMunicipality": "Невідомий муніципалітет",
+    "zone": "Зона"
+  },
+  "stopMap": {
+    "title": "Або виберіть на карті",
+    "nearMe": "Поблизу мене",
+    "locating": "Визначаю місце...",
+    "mapAriaLabel": "Інтерактивна карта зупинок PID",
+    "yourLocation": "Ваше місцезнаходження"
+  },
+  "geolocation": {
+    "notSupported": "Ваш браузер не підтримує геолокацію",
+    "denied": "Доступ до місцезнаходження заборонено. Будь ласка, увімкніть доступ до місцезнаходження.",
+    "unavailable": "Інформація про місцезнаходження недоступна.",
+    "timeout": "Час запиту на визначення місцезнаходження вичерпано.",
+    "genericError": "Сталася помилка при отриманні вашого місцезнаходження."
+  },
+  "departureBoard": {
+    "title": "Табло відправлення",
+    "awaitingSelection": "Очікується вибір зупинки",
+    "autoRefresh": "Авто-оновлення",
+    "fullscreen": "На весь екран",
+    "selectAnyStop": "Виберіть будь-яку зупинку для завантаження відправлень.",
+    "dataSource": "Дані з PID open data + Golemio API.",
+    "fetchingDepartures": "Завантажую відправлення в реальному часі…",
+    "noDepartures": "На наступну годину немає запланованих відправлень.",
+    "platform": "Платформа",
+    "departure": "відправлення",
+    "departures": "відправлень",
+    "of": "з",
+    "tableHeaders": {
+      "mode": "Тип",
+      "line": "Маршрут",
+      "destination": "Напрямок",
+      "arrives": "Прибуття",
+      "planned": "Заплановано",
+      "live": "Актуально",
+      "status": "Статус"
+    },
+    "status": {
+      "onTime": "вчасно",
+      "live": "актуально",
+      "delayed": "{minutes} хв",
+      "lessThanMin": "<1 хв"
+    },
+    "footer": {
+      "lastUpdated": "Останнє оновлення:",
+      "updating": "Оновлення…",
+      "source": "Джерело:",
+      "pidOpenData": "PID open data",
+      "golemioApi": "Golemio API"
+    },
+    "apiKeyError": "Вкажіть дійсний токен у {code} як {key}.",
+    "trackVehicle": "Відстежити {line} до {destination}"
+  },
+  "vehicleTracker": {
+    "backButton": "← Назад",
+    "loadingVehicle": "Завантажую дані транспорту...",
+    "myLocation": "Моє місце",
+    "locating": "Визначаю місце...",
+    "reCenter": "Центрувати",
+    "status": "Статус",
+    "onTime": "Вчасно",
+    "delayed": "+{minutes} хв затримка",
+    "early": "{minutes} хв раніше",
+    "waitingForData": "Очікування даних...",
+    "serviceCanceled": "Рейс скасовано",
+    "yourStop": "Ваша зупинка",
+    "currentStop": "Поточна зупинка",
+    "nextStop": "Наступна зупинка",
+    "vehicle": "Транспорт",
+    "type": "Тип",
+    "id": "ID",
+    "amenities": {
+      "accessible": "♿ Доступний",
+      "ac": "❄ Кондиціонер",
+      "usb": "🔌 USB"
+    },
+    "movement": "Рух",
+    "heading": "Напрямок",
+    "speed": "Швидкість",
+    "distance": "Відстань",
+    "fromStop": "від {stop}",
+    "fromOriginStop": "від початкової зупинки",
+    "fromYourLocation": "від вашого місця",
+    "lastUpdate": "Останнє оновлення",
+    "trackingNotActive": "Відстеження в реальному часі неактивне",
+    "locatingVehicle": "Шукаю транспорт...",
+    "footer": "Відстеження транспорту в реальному часі за допомогою Golemio API. Позиція оновлюється кожні 5 секунд.",
+    "time": {
+      "inMinutes": "через {minutes} хв",
+      "arrivingNow": "прибуває зараз",
+      "departedAgo": "відправився {minutes} хв тому",
+      "ago": "{minutes} хв тому"
+    },
+    "vehicleTypes": {
+      "metro": "Метро",
+      "tram": "Трамвай",
+      "bus": "Автобус",
+      "trolleybus": "Тролейбус",
+      "train": "Поїзд",
+      "ferry": "Пором"
+    },
+    "directions": {
+      "n": "Пн",
+      "ne": "ПнС",
+      "e": "С",
+      "se": "ПдС",
+      "s": "Пд",
+      "sw": "ПдЗ",
+      "w": "З",
+      "nw": "ПнЗ"
+    }
+  },
+  "fullscreenMode": {
+    "eyebrow": "Режим повного екрану",
+    "selectStop": "Виберіть зупинку для продовження",
+    "exitFullscreen": "Вийти з повноекранного режиму"
+  },
+  "theme": {
+    "switchToDark": "Перемкнути на темний режим",
+    "switchToLight": "Перемкнути на світлий режим"
+  }
+}

@@ -1,6 +1,8 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '../stores/themeStore'
 
+const { t } = useI18n()
 const themeStore = useThemeStore()
 </script>
 
@@ -8,7 +10,7 @@ const themeStore = useThemeStore()
   <button
     @click="themeStore.toggleTheme"
     class="ghost"
-    :aria-label="`Switch to ${themeStore.theme === 'light' ? 'dark' : 'light'} mode`"
+    :aria-label="themeStore.theme === 'light' ? t('theme.switchToDark') : t('theme.switchToLight')"
   >
     <svg
       v-if="themeStore.theme === 'light'"

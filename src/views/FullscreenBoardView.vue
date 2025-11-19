@@ -1,9 +1,13 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimetableStore } from '../stores/timetableStore'
 import DepartureBoard from '../components/DepartureBoard.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import LanguageSelector from '../components/LanguageSelector.vue'
+
+const { t } = useI18n()
 
 const REFRESH_INTERVAL = 5000
 
@@ -120,25 +124,26 @@ watch(
   <div class="fullscreen-shell">
     <header class="fullscreen-header">
       <div>
-        <p class="eyebrow">Fullscreen mode</p>
+        <p class="eyebrow">{{ t('fullscreenMode.eyebrow') }}</p>
         <h1>
           {{
             store.selectedStop
               ? store.selectedStop.altName || store.selectedStop.displayName
-              : 'Select a stop to continue'
+              : t('fullscreenMode.selectStop')
           }}
         </h1>
         <p v-if="store.selectedStop" class="subtext">
-          Node {{ store.selectedStop.node }}
+          {{ t('common.node') }} {{ store.selectedStop.node }}
           <span v-if="store.selectedStop.municipality">
             · {{ store.selectedStop.municipality }}
           </span>
         </p>
       </div>
       <div style="display: flex; gap: 0.5rem;">
+        <LanguageSelector />
         <ThemeToggle />
         <button class="ghost" type="button" @click="exitFullscreen">
-          Exit fullscreen
+          {{ t('fullscreenMode.exitFullscreen') }}
         </button>
       </div>
     </header>
@@ -149,7 +154,7 @@ watch(
 
     <footer class="app-footer">
       <p>
-        Made by
+        {{ t('footer.madeBy') }}
         <a href="https://berezhnyk.com" target="_blank" rel="noopener noreferrer"
           >berezhnyk.com</a
         >

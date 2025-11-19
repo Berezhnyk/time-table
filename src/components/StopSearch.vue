@@ -1,10 +1,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { refDebounced } from '@vueuse/core'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta, getTransportIconSvg, getUniqueTransportTypes } from '../utils/transport'
 
+const { t } = useI18n()
 const store = useTimetableStore()
 const router = useRouter()
 const query = ref('')
@@ -123,7 +125,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 const findNearestStop = () => {
   if (!navigator.geolocation) {
-    locationError.value = 'Geolocation is not supported by your browser'
+    locationError.value = t('geolocation.notSupported')
     setTimeout(() => {
       locationError.value = null
     }, 5000)
@@ -171,16 +173,16 @@ const findNearestStop = () => {
       locatingUser.value = false
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          locationError.value = 'Location access denied. Please enable location permissions.'
+          locationError.value = t('geolocation.denied')
           break
         case error.POSITION_UNAVAILABLE:
-          locationError.value = 'Location information unavailable.'
+          locationError.value = t('geolocation.unavailable')
           break
         case error.TIMEOUT:
-          locationError.value = 'Location request timed out.'
+          locationError.value = t('geolocation.timeout')
           break
         default:
-          locationError.value = 'An error occurred while getting your location.'
+          locationError.value = t('geolocation.genericError')
       }
       setTimeout(() => {
         locationError.value = null
@@ -194,14 +196,14 @@ const findNearestStop = () => {
   <section class="panel">
     <header class="panel-header">
       <div>
-        <h2>Select a stop</h2>
+        <h2>{{ t('stopSearch.title') }}</h2>
       </div>
       <button
         @click="findNearestStop"
         :disabled="locatingUser"
         class="locate-button"
         :class="{ 'locate-button--loading': locatingUser }"
-        aria-label="Find nearest stop"
+        :aria-label="t('stopSearch.nearMe')"
       >
         <svg
           v-if="!locatingUser"
@@ -233,34 +235,34 @@ const findNearestStop = () => {
         >
           <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
         </svg>
-        <span class="locate-button__text">{{ locatingUser ? 'Locating...' : 'Near Me' }}</span>
+        <span class="locate-button__text">{{ locatingUser ? t('stopSearch.locating') : t('stopSearch.nearMe') }}</span>
       </button>
     </header>
 
     <div v-if="locationError" class="location-error">{{ locationError }}</div>
 
-    <label class="input-label" for="stop-search-input">Search by name</label>
+    <label class="input-label" for="stop-search-input">{{ t('stopSearch.searchLabel') }}</label>
     <div class="input-row">
       <input
         id="stop-search-input"
         v-model="query"
         type="search"
-        placeholder="Type e.g. Anděl, Muzeum, Karlovo náměstí…"
+        :placeholder="t('stopSearch.searchPlaceholder')"
         autocomplete="off"
       />
       <button
         v-if="query"
         class="ghost"
         type="button"
-        aria-label="Clear search"
+        :aria-label="t('common.clear')"
         @click="clearSearch"
       >
-        Clear
+        {{ t('common.clear') }}
       </button>
     </div>
 
     <p v-if="store.stopsLoading" class="status-line">
-      Loading official PID stop list…
+      {{ t('stopSearch.loadingStops') }}
     </p>
     <p v-else-if="store.stopsError" class="status-line error">
       {{ store.stopsError }}
@@ -278,8 +280,8 @@ const findNearestStop = () => {
             <div>
               <p class="group-name">{{ group.stop.groupName }}</p>
               <p class="group-meta">
-                {{ group.stop.municipality || 'Unknown municipality' }}
-                <span v-if="group.stop.zone"> · Zone {{ group.stop.zone }}</span>
+                {{ group.stop.municipality || t('stopSearch.unknownMunicipality') }}
+                <span v-if="group.stop.zone"> · {{ t('stopSearch.zone') }} {{ group.stop.zone }}</span>
               </p>
               <p class="stop-lines">
                 {{ group.linesSummary }}
@@ -300,7 +302,7 @@ const findNearestStop = () => {
         </button>
       </li>
       <li v-if="!groupedStops.length" class="status-line">
-        No stop groups match "{{ debouncedQuery }}".
+        {{ t('stopSearch.noMatches', { query: debouncedQuery }) }}
       </li>
     </ul>
   </section>

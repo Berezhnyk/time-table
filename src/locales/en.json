@@ -1,0 +1,153 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "back": "Back",
+    "close": "Close",
+    "node": "Node",
+    "min": "min",
+    "mins": "mins"
+  },
+  "header": {
+    "eyebrow": "PID Open Data",
+    "title": "timetable.guide",
+    "subtitle": "Search or pick any PID stop to see its live departures, powered by {link}.",
+    "publicDatasets": "public datasets"
+  },
+  "footer": {
+    "madeBy": "Made by"
+  },
+  "stopSearch": {
+    "title": "Select a stop",
+    "searchLabel": "Search by name",
+    "searchPlaceholder": "Type e.g. Anděl, Muzeum, Karlovo náměstí…",
+    "nearMe": "Near Me",
+    "locating": "Locating...",
+    "loadingStops": "Loading official PID stop list…",
+    "noMatches": "No stop groups match \"{query}\".",
+    "unknownMunicipality": "Unknown municipality",
+    "zone": "Zone"
+  },
+  "stopMap": {
+    "title": "Or pick via map",
+    "nearMe": "Near Me",
+    "locating": "Locating...",
+    "mapAriaLabel": "Interactive map of PID stops",
+    "yourLocation": "Your location"
+  },
+  "geolocation": {
+    "notSupported": "Geolocation is not supported by your browser",
+    "denied": "Location access denied. Please enable location permissions.",
+    "unavailable": "Location information unavailable.",
+    "timeout": "Location request timed out.",
+    "genericError": "An error occurred while getting your location."
+  },
+  "departureBoard": {
+    "title": "Departure board",
+    "awaitingSelection": "Awaiting stop selection",
+    "autoRefresh": "Auto-refresh",
+    "fullscreen": "Fullscreen",
+    "selectAnyStop": "Select any stop to load live departures.",
+    "dataSource": "Data sourced from PID open data + Golemio APIs.",
+    "fetchingDepartures": "Fetching live departures…",
+    "noDepartures": "No departures are scheduled in the next hour.",
+    "platform": "Platform",
+    "departure": "departure",
+    "departures": "departures",
+    "of": "of",
+    "tableHeaders": {
+      "mode": "Mode",
+      "line": "Line",
+      "destination": "Destination",
+      "arrives": "Arrives",
+      "planned": "Planned",
+      "live": "Live",
+      "status": "Status"
+    },
+    "status": {
+      "onTime": "on time",
+      "live": "live",
+      "delayed": "{minutes} min",
+      "lessThanMin": "<1 min"
+    },
+    "footer": {
+      "lastUpdated": "Last updated:",
+      "updating": "Updating…",
+      "source": "Source:",
+      "pidOpenData": "PID open data",
+      "golemioApi": "Golemio API"
+    },
+    "apiKeyError": "Provide a valid token in {code} as {key}.",
+    "trackVehicle": "Track {line} to {destination}"
+  },
+  "vehicleTracker": {
+    "backButton": "← Back",
+    "loadingVehicle": "Loading vehicle data...",
+    "myLocation": "My Location",
+    "locating": "Locating...",
+    "reCenter": "Re-center",
+    "status": "Status",
+    "onTime": "On time",
+    "delayed": "+{minutes} min delay",
+    "early": "{minutes} min early",
+    "waitingForData": "Waiting for data...",
+    "serviceCanceled": "Service Canceled",
+    "yourStop": "Your Stop",
+    "currentStop": "Current Stop",
+    "nextStop": "Next Stop",
+    "vehicle": "Vehicle",
+    "type": "Type",
+    "id": "ID",
+    "amenities": {
+      "accessible": "♿ Accessible",
+      "ac": "❄ AC",
+      "usb": "🔌 USB"
+    },
+    "movement": "Movement",
+    "heading": "Heading",
+    "speed": "Speed",
+    "distance": "Distance",
+    "fromStop": "from {stop}",
+    "fromOriginStop": "from origin stop",
+    "fromYourLocation": "from your location",
+    "lastUpdate": "Last Update",
+    "trackingNotActive": "Real-time tracking not active",
+    "locatingVehicle": "Locating vehicle...",
+    "footer": "Real-time vehicle tracking powered by Golemio API. Position updates every 5 seconds.",
+    "time": {
+      "inMinutes": "in {minutes} min",
+      "arrivingNow": "arriving now",
+      "departedAgo": "departed {minutes} min ago",
+      "ago": "{minutes} min ago"
+    },
+    "vehicleTypes": {
+      "metro": "Metro",
+      "tram": "Tram",
+      "bus": "Bus",
+      "trolleybus": "Trolleybus",
+      "train": "Train",
+      "ferry": "Ferry"
+    },
+    "directions": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SW",
+      "w": "W",
+      "nw": "NW"
+    }
+  },
+  "fullscreenMode": {
+    "eyebrow": "Fullscreen mode",
+    "selectStop": "Select a stop to continue",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "theme": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  }
+}

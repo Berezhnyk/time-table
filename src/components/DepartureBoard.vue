@@ -1,8 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta, getTransportIconSvg } from '../utils/transport'
+
+const { t } = useI18n()
 
 const REFRESH_INTERVAL = 5000
 const AUTO_REFRESH_KEY = 'timetable_auto_refresh'
@@ -40,7 +43,7 @@ const isInitialLoad = computed(
 )
 const lastUpdatedLabel = computed(() =>
   store.departuresLoading && store.departures.length
-    ? 'Updating…'
+    ? t('departureBoard.footer.updating')
     : store.lastUpdated
       ? formatTime(store.lastUpdated)
       : '—'
@@ -209,15 +212,15 @@ function formatTime(value) {
 function formatStatus(departure) {
   if (typeof departure.delayMinutes === 'number' && departure.delayMinutes !== 0) {
     return departure.delayMinutes > 0
-      ? `+${departure.delayMinutes} min`
-      : `${departure.delayMinutes} min`
+      ? `+${departure.delayMinutes} ${t('common.min')}`
+      : `${departure.delayMinutes} ${t('common.min')}`
   }
 
   if (departure.realtimeTime && !departure.plannedTime) {
-    return 'live'
+    return t('departureBoard.status.live')
   }
 
-  return 'on time'
+  return t('departureBoard.status.onTime')
 }
 
 const refreshBoard = () => {
@@ -252,10 +255,10 @@ function formatEta(value) {
   }
 
   if (value <= 0) {
-    return '<1 min'
+    return t('departureBoard.status.lessThanMin')
   }
 
-  return `${value} min`
+  return `${value} ${t('common.min')}`
 }
 
 const trackVehicle = (departure) => {
@@ -346,21 +349,21 @@ watch(
   <section class="panel board-panel">
     <header class="panel-header">
       <div>
-        <p class="eyebrow">Departure board</p>
+        <p class="eyebrow">{{ t('departureBoard.title') }}</p>
         <h2>
           {{
             store.selectedStop
               ? store.selectedStop.altName || store.selectedStop.displayName
               : isOnStopPage
-                ? 'Loading...'
-                : 'Awaiting stop selection'
+                ? t('common.loading')
+                : t('departureBoard.awaitingSelection')
           }}
         </h2>
         <p v-if="store.selectedStop" class="stop-meta">
           {{
             store.selectedStop.municipality
-              ? `${store.selectedStop.municipality} · Node ${store.selectedStop.node}`
-              : `Node ${store.selectedStop.node}`
+              ? `${store.selectedStop.municipality} · ${t('common.node')} ${store.selectedStop.node}`
+              : `${t('common.node')} ${store.selectedStop.node}`
           }}
         </p>
       </div>
@@ -373,7 +376,7 @@ watch(
             @change="toggleAutoRefresh"
             :disabled="!store.hasSelection"
           />
-          <span>Auto-refresh</span>
+          <span>{{ t('departureBoard.autoRefresh') }}</span>
         </label>
         <button
           class="ghost"
@@ -381,7 +384,7 @@ watch(
           :disabled="!store.hasSelection || store.departuresLoading"
           @click="refreshBoard"
         >
-          Refresh
+          {{ t('common.refresh') }}
         </button>
         <button
           v-if="!isFullscreenRoute"
@@ -390,21 +393,21 @@ watch(
           :disabled="!store.hasSelection"
           @click="openFullscreen"
         >
-          Fullscreen
+          {{ t('departureBoard.fullscreen') }}
         </button>
       </div>
     </header>
 
     <div class="board-surface">
       <div v-if="!store.hasSelection && !isOnStopPage" class="board-placeholder">
-        <p>Select any stop to load live departures.</p>
+        <p>{{ t('departureBoard.selectAnyStop') }}</p>
         <p class="caption">
-          Data sourced from PID open data + Golemio APIs.
+          {{ t('departureBoard.dataSource') }}
         </p>
       </div>
 
       <div v-else-if="!store.hasSelection || isInitialLoad" class="board-placeholder">
-        <p>Fetching live departures…</p>
+        <p>{{ t('departureBoard.fetchingDepartures') }}</p>
       </div>
 
       <div
@@ -439,7 +442,7 @@ watch(
         </div>
 
         <div v-if="!formattedDepartures.length" class="board-placeholder">
-          No departures are scheduled in the next hour.
+          {{ t('departureBoard.noDepartures') }}
         </div>
 
         <div v-else class="platforms-container">
@@ -450,14 +453,14 @@ watch(
           >
             <div class="platform-group-header">
               <h3 class="platform-title">
-                Platform <span class="platform-badge-large">{{ platformGroup.platform }}</span>
+                {{ t('departureBoard.platform') }} <span class="platform-badge-large">{{ platformGroup.platform }}</span>
               </h3>
               <span class="platform-count">
                 <template v-if="platformGroup.totalCount > platformGroup.filteredCount">
-                  {{ platformGroup.filteredCount }} of {{ platformGroup.totalCount }} departures
+                  {{ platformGroup.filteredCount }} {{ t('departureBoard.of') }} {{ platformGroup.totalCount }} {{ t('departureBoard.departures') }}
                 </template>
                 <template v-else>
-                  {{ platformGroup.departures.length }} departure{{ platformGroup.departures.length !== 1 ? 's' : '' }}
+                  {{ platformGroup.departures.length }} {{ platformGroup.departures.length !== 1 ? t('departureBoard.departures') : t('departureBoard.departure') }}
                 </template>
               </span>
             </div>
@@ -465,13 +468,13 @@ watch(
             <table class="departure-grid" aria-live="polite">
               <thead>
                 <tr>
-                  <th scope="col">Mode</th>
-                  <th scope="col">Line</th>
-                  <th scope="col">Destination</th>
-                  <th scope="col">Arrives</th>
-                  <th scope="col">Planned</th>
-                  <th scope="col">Live</th>
-                  <th scope="col">Status</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.mode') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.line') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.destination') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.arrives') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.planned') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.live') }}</th>
+                  <th scope="col">{{ t('departureBoard.tableHeaders.status') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -515,17 +518,17 @@ watch(
 
     <footer class="board-footer">
       <p>
-        Last updated:
+        {{ t('departureBoard.footer.lastUpdated') }}
         {{ lastUpdatedLabel }}
       </p>
       <p>
-        Source:
+        {{ t('departureBoard.footer.source') }}
         <a
           class="link"
           href="https://pid.cz/en/opendata/"
           target="_blank"
           rel="noreferrer"
-          >PID open data</a
+          >{{ t('departureBoard.footer.pidOpenData') }}</a
         >
         &middot;
         <a
@@ -533,7 +536,7 @@ watch(
           href="https://api.golemio.cz/pid/docs/openapi/"
           target="_blank"
           rel="noreferrer"
-          >Golemio API</a
+          >{{ t('departureBoard.footer.golemioApi') }}</a
         >
       </p>
     </footer>

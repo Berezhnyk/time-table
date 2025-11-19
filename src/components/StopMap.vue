@@ -1,11 +1,13 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import { useTimetableStore } from '../stores/timetableStore'
 import { useThemeStore } from '../stores/themeStore'
 import { getTransportMeta, getTransportIconSvg, getUniqueTransportTypes } from '../utils/transport'
 
+const { t } = useI18n()
 const store = useTimetableStore()
 const themeStore = useThemeStore()
 const mapElement = ref(null)
@@ -198,7 +200,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 const findNearestStop = () => {
   if (!navigator.geolocation) {
-    locationError.value = 'Geolocation is not supported by your browser'
+    locationError.value = t('geolocation.notSupported')
     return
   }
 
@@ -225,7 +227,7 @@ const findNearestStop = () => {
             iconAnchor: [12, 12],
           }),
         })
-        userMarker.bindTooltip('Your location', { sticky: true })
+        userMarker.bindTooltip(t('stopMap.yourLocation'), { sticky: true })
         userMarker.addTo(mapInstance)
       }
 
@@ -256,16 +258,16 @@ const findNearestStop = () => {
       locatingUser.value = false
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          locationError.value = 'Location access denied. Please enable location permissions.'
+          locationError.value = t('geolocation.denied')
           break
         case error.POSITION_UNAVAILABLE:
-          locationError.value = 'Location information unavailable.'
+          locationError.value = t('geolocation.unavailable')
           break
         case error.TIMEOUT:
-          locationError.value = 'Location request timed out.'
+          locationError.value = t('geolocation.timeout')
           break
         default:
-          locationError.value = 'An error occurred while getting your location.'
+          locationError.value = t('geolocation.genericError')
       }
       setTimeout(() => {
         locationError.value = null
@@ -312,14 +314,14 @@ watch(
   <section v-show="!store.stopsLoading" class="panel map-panel">
     <header class="panel-header">
       <div>
-        <h2>Or pick via map</h2>
+        <h2>{{ t('stopMap.title') }}</h2>
       </div>
       <button
         @click="findNearestStop"
         :disabled="locatingUser"
         class="locate-button"
         :class="{ 'locate-button--loading': locatingUser }"
-        aria-label="Find nearest stop"
+        :aria-label="t('stopMap.nearMe')"
       >
         <svg
           v-if="!locatingUser"
@@ -351,11 +353,11 @@ watch(
         >
           <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
         </svg>
-        <span class="locate-button__text">{{ locatingUser ? 'Locating...' : 'Near Me' }}</span>
+        <span class="locate-button__text">{{ locatingUser ? t('stopMap.locating') : t('stopMap.nearMe') }}</span>
       </button>
     </header>
     <div v-if="locationError" class="location-error">{{ locationError }}</div>
-    <div ref="mapElement" class="map-container" aria-label="Interactive map of PID stops" />
+    <div ref="mapElement" class="map-container" :aria-label="t('stopMap.mapAriaLabel')" />
   </section>
 </template>
 

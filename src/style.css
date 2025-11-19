@@ -1113,8 +1113,18 @@ input:focus {
 
 @media (max-width: 768px) {
   .app-header {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: flex-start;
     gap: 1rem;
+  }
+
+  .app-header > div:first-child {
+    flex: 1;
+  }
+
+  .app-header > div:last-child {
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .panel-header {

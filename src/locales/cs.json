@@ -1,0 +1,153 @@
+{
+  "common": {
+    "loading": "Načítání...",
+    "error": "Chyba",
+    "refresh": "Obnovit",
+    "clear": "Vymazat",
+    "back": "Zpět",
+    "close": "Zavřít",
+    "node": "Uzel",
+    "min": "min",
+    "mins": "min"
+  },
+  "header": {
+    "eyebrow": "PID Open Data",
+    "title": "timetable.guide",
+    "subtitle": "Vyhledejte nebo vyberte jakoukoli zastávku PID a zobrazte si živé odjezdy, založené na {link}.",
+    "publicDatasets": "veřejných datasetech"
+  },
+  "footer": {
+    "madeBy": "Vytvořil"
+  },
+  "stopSearch": {
+    "title": "Vyberte zastávku",
+    "searchLabel": "Hledat podle názvu",
+    "searchPlaceholder": "Zadejte např. Anděl, Muzeum, Karlovo náměstí…",
+    "nearMe": "V okolí",
+    "locating": "Vyhledávám...",
+    "loadingStops": "Načítám oficiální seznam zastávek PID…",
+    "noMatches": "Žádná zastávka neodpovídá dotazu \"{query}\".",
+    "unknownMunicipality": "Neznámá obec",
+    "zone": "Zóna"
+  },
+  "stopMap": {
+    "title": "Nebo vyberte na mapě",
+    "nearMe": "V okolí",
+    "locating": "Vyhledávám...",
+    "mapAriaLabel": "Interaktivní mapa zastávek PID",
+    "yourLocation": "Vaše poloha"
+  },
+  "geolocation": {
+    "notSupported": "Váš prohlížeč nepodporuje geolokaci",
+    "denied": "Přístup k poloze zamítnut. Povolte prosím přístup k poloze.",
+    "unavailable": "Informace o poloze nejsou k dispozici.",
+    "timeout": "Požadavek na polohu vypršel.",
+    "genericError": "Při získávání vaší polohy došlo k chybě."
+  },
+  "departureBoard": {
+    "title": "Odjezdová tabule",
+    "awaitingSelection": "Čeká se na výběr zastávky",
+    "autoRefresh": "Automatické obnovování",
+    "fullscreen": "Celá obrazovka",
+    "selectAnyStop": "Vyberte jakoukoli zastávku pro načtení živých odjezdů.",
+    "dataSource": "Data pocházejí z PID open data + Golemio API.",
+    "fetchingDepartures": "Načítám živé odjezdy…",
+    "noDepartures": "V příští hodině nejsou naplánovány žádné odjezdy.",
+    "platform": "Nástupiště",
+    "departure": "odjezd",
+    "departures": "odjezdy",
+    "of": "z",
+    "tableHeaders": {
+      "mode": "Druh",
+      "line": "Linka",
+      "destination": "Směr",
+      "arrives": "Příjezd",
+      "planned": "Plánovaný",
+      "live": "Aktuální",
+      "status": "Stav"
+    },
+    "status": {
+      "onTime": "včas",
+      "live": "aktuální",
+      "delayed": "{minutes} min",
+      "lessThanMin": "<1 min"
+    },
+    "footer": {
+      "lastUpdated": "Naposledy aktualizováno:",
+      "updating": "Aktualizace…",
+      "source": "Zdroj:",
+      "pidOpenData": "PID open data",
+      "golemioApi": "Golemio API"
+    },
+    "apiKeyError": "Zadejte platný token v {code} jako {key}.",
+    "trackVehicle": "Sledovat {line} směr {destination}"
+  },
+  "vehicleTracker": {
+    "backButton": "← Zpět",
+    "loadingVehicle": "Načítám data vozidla...",
+    "myLocation": "Moje poloha",
+    "locating": "Vyhledávám...",
+    "reCenter": "Vycentrovat",
+    "status": "Stav",
+    "onTime": "Včas",
+    "delayed": "+{minutes} min zpoždění",
+    "early": "{minutes} min předstihu",
+    "waitingForData": "Čeká se na data...",
+    "serviceCanceled": "Spoj zrušen",
+    "yourStop": "Vaše zastávka",
+    "currentStop": "Aktuální zastávka",
+    "nextStop": "Další zastávka",
+    "vehicle": "Vozidlo",
+    "type": "Typ",
+    "id": "ID",
+    "amenities": {
+      "accessible": "♿ Bezbariérový",
+      "ac": "❄ Klimatizace",
+      "usb": "🔌 USB"
+    },
+    "movement": "Pohyb",
+    "heading": "Směr",
+    "speed": "Rychlost",
+    "distance": "Vzdálenost",
+    "fromStop": "od {stop}",
+    "fromOriginStop": "od výchozí zastávky",
+    "fromYourLocation": "od vaší polohy",
+    "lastUpdate": "Poslední aktualizace",
+    "trackingNotActive": "Sledování v reálném čase není aktivní",
+    "locatingVehicle": "Vyhledávám vozidlo...",
+    "footer": "Sledování vozidel v reálném čase pomocí Golemio API. Pozice se aktualizuje každých 5 sekund.",
+    "time": {
+      "inMinutes": "za {minutes} min",
+      "arrivingNow": "právě přijíždí",
+      "departedAgo": "odjelo před {minutes} min",
+      "ago": "před {minutes} min"
+    },
+    "vehicleTypes": {
+      "metro": "Metro",
+      "tram": "Tramvaj",
+      "bus": "Autobus",
+      "trolleybus": "Trolejbus",
+      "train": "Vlak",
+      "ferry": "Přívoz"
+    },
+    "directions": {
+      "n": "S",
+      "ne": "SV",
+      "e": "V",
+      "se": "JV",
+      "s": "J",
+      "sw": "JZ",
+      "w": "Z",
+      "nw": "SZ"
+    }
+  },
+  "fullscreenMode": {
+    "eyebrow": "Režim celé obrazovky",
+    "selectStop": "Pokračujte výběrem zastávky",
+    "exitFullscreen": "Ukončit celou obrazovku"
+  },
+  "theme": {
+    "switchToDark": "Přepnout na tmavý režim",
+    "switchToLight": "Přepnout na světlý režim"
+  }
+}

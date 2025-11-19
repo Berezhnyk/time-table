@@ -1,12 +1,15 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimetableStore } from '../stores/timetableStore'
 import StopSearch from '../components/StopSearch.vue'
 import StopMap from '../components/StopMap.vue'
 import DepartureBoard from '../components/DepartureBoard.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import LanguageSelector from '../components/LanguageSelector.vue'
 
+const { t } = useI18n()
 const store = useTimetableStore()
 const route = useRoute()
 const router = useRouter()
@@ -90,20 +93,24 @@ watch(
   <div class="app-shell">
     <header class="app-header">
       <div>
-        <p class="eyebrow">PID Open Data</p>
-        <h1 class="app-title" @click="goHome">timetable.guide</h1>
+        <p class="eyebrow">{{ t('header.eyebrow') }}</p>
+        <h1 class="app-title" @click="goHome">{{ t('header.title') }}</h1>
         <p class="subtext">
-          Search or pick any PID stop to see its live departures, powered by
-          <a
-            class="link"
-            href="https://pid.cz/en/opendata/"
-            target="_blank"
-            rel="noreferrer"
-            >public datasets</a
-          >.
+          <i18n-t keypath="header.subtitle" tag="span">
+            <template #link>
+              <a
+                class="link"
+                href="https://pid.cz/en/opendata/"
+                target="_blank"
+                rel="noreferrer"
+                >{{ t('header.publicDatasets') }}</a
+              >
+            </template>
+          </i18n-t>
         </p>
       </div>
-      <div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <LanguageSelector />
         <ThemeToggle />
       </div>
     </header>
@@ -120,7 +127,7 @@ watch(
 
     <footer class="app-footer">
       <p>
-        Made by
+        {{ t('footer.madeBy') }}
         <a href="https://berezhnyk.com" target="_blank" rel="noopener noreferrer"
           >berezhnyk.com</a
         >
