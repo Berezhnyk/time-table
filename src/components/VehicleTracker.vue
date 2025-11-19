@@ -42,7 +42,9 @@ const isLoading = computed(() => store.vehicleLoading)
 
 const transportMeta = computed(() => {
   if (!vehicleData.value) return null
-  return getTransportMeta(vehicleData.value.transportKey || vehicleData.value.vehicleType)
+  // For metro, pass line name to get correct color
+  const lineName = vehicleData.value.transportKey === 'metro' ? vehicleData.value.line : null
+  return getTransportMeta(vehicleData.value.transportKey || vehicleData.value.vehicleType, lineName)
 })
 
 const transportTypeLabel = computed(() => {
