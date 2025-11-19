@@ -144,7 +144,7 @@ watch(
     </header>
 
     <section class="fullscreen-board">
-      <DepartureBoard />
+      <DepartureBoard :key="store.lastUpdated" />
     </section>
 
     <footer class="app-footer">

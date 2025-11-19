@@ -1,12 +1,37 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta } from '../utils/transport'
 
+const REFRESH_INTERVAL = 5000
+const AUTO_REFRESH_KEY = 'timetable_auto_refresh'
+
 const store = useTimetableStore()
 const router = useRouter()
 const route = useRoute()
+const refreshTimer = ref(null)
+const isInFullscreen = ref(false)
+const autoRefreshEnabled = ref(false)
+
+// Load auto-refresh preference from localStorage
+const loadAutoRefreshPreference = () => {
+  try {
+    const saved = localStorage.getItem(AUTO_REFRESH_KEY)
+    return saved === 'true'
+  } catch {
+    return false
+  }
+}
+
+// Save auto-refresh preference to localStorage
+const saveAutoRefreshPreference = (enabled) => {
+  try {
+    localStorage.setItem(AUTO_REFRESH_KEY, String(enabled))
+  } catch {
+    // Silent fail - localStorage might not be available
+  }
+}
 
 const apiKeyConfigured = Boolean(import.meta.env.VITE_GOLEMIO_API_KEY)
 const isFullscreenRoute = computed(() => route.name === 'fullscreen')
@@ -133,6 +158,16 @@ const openFullscreen = () => {
   }
 }
 
+const exitFullscreen = () => {
+  if (document.exitFullscreen) {
+    document.exitFullscreen()
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen()
+  } else if (document.msExitFullscreen) {
+    document.msExitFullscreen()
+  }
+}
+
 function formatEta(value) {
   if (value === null || value === undefined) {
     return '—'
@@ -175,6 +210,73 @@ const trackVehicle = (departure) => {
     }
   })
 }
+
+const toggleAutoRefresh = () => {
+  autoRefreshEnabled.value = !autoRefreshEnabled.value
+  saveAutoRefreshPreference(autoRefreshEnabled.value)
+
+  if (autoRefreshEnabled.value) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+}
+
+const startAutoRefresh = () => {
+  stopAutoRefresh()
+  refreshTimer.value = window.setInterval(() => {
+    if (store.hasSelection && !store.departuresLoading) {
+      store.fetchDepartures()
+    }
+  }, REFRESH_INTERVAL)
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer.value) {
+    clearInterval(refreshTimer.value)
+    refreshTimer.value = null
+  }
+}
+
+const handleFullscreenChange = () => {
+  const isFullscreen = Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.msFullscreenElement
+  )
+
+  isInFullscreen.value = isFullscreen
+
+  // In fullscreen mode, always auto-refresh
+  // In normal mode, respect the user's toggle preference
+  if (isFullscreen) {
+    startAutoRefresh()
+  } else if (autoRefreshEnabled.value) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+}
+
+onMounted(() => {
+  // Load saved preference
+  autoRefreshEnabled.value = loadAutoRefreshPreference()
+
+  // Listen for fullscreen changes
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+  // Check initial state and start auto-refresh if enabled
+  handleFullscreenChange()
+})
+
+onBeforeUnmount(() => {
+  stopAutoRefresh()
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+})
 </script>
 
 <template>
@@ -201,6 +303,15 @@ const trackVehicle = (departure) => {
       </div>
 
       <div class="board-actions">
+        <label class="auto-refresh-toggle">
+          <input
+            type="checkbox"
+            :checked="autoRefreshEnabled"
+            @change="toggleAutoRefresh"
+            :disabled="!store.hasSelection"
+          />
+          <span>Auto-refresh</span>
+        </label>
         <button
           class="ghost"
           type="button"
@@ -210,7 +321,15 @@ const trackVehicle = (departure) => {
           Refresh
         </button>
         <button
-          v-if="!isFullscreenRoute"
+          v-if="!isFullscreenRoute && isInFullscreen"
+          class="ghost"
+          type="button"
+          @click="exitFullscreen"
+        >
+          Exit fullscreen
+        </button>
+        <button
+          v-else-if="!isFullscreenRoute"
           class="ghost"
           type="button"
           :disabled="!store.hasSelection"

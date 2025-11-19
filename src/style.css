@@ -521,6 +521,53 @@ input:focus {
 .board-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.auto-refresh-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.dark .auto-refresh-toggle {
+  color: #8db876;
+}
+
+.dark .auto-refresh-toggle:hover {
+  background-color: rgba(157, 230, 122, 0.05);
+}
+
+.auto-refresh-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: #0066cc;
+}
+
+.dark .auto-refresh-toggle input[type="checkbox"] {
+  accent-color: #9de67a;
+}
+
+.auto-refresh-toggle input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.auto-refresh-toggle:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .board-surface {

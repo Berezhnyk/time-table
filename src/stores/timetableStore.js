@@ -248,6 +248,7 @@ export const useTimetableStore = defineStore('timetable', {
     vehicleLoading: false,
     vehicleError: null,
     trackingTarget: null,
+    departuresAbortController: null,
   }),
   getters: {
     hasSelection: (state) => Boolean(state.selectedStop),
@@ -307,6 +308,15 @@ export const useTimetableStore = defineStore('timetable', {
         return
       }
 
+      // Cancel any pending request for previous stop
+      if (this.departuresAbortController) {
+        this.departuresAbortController.abort()
+      }
+
+      // Create new abort controller for this request
+      const abortController = new AbortController()
+      this.departuresAbortController = abortController
+
       this.departuresLoading = true
       this.departuresError = null
 
@@ -339,18 +349,27 @@ export const useTimetableStore = defineStore('timetable', {
             indexes: null,
           },
           timeout: 15000,
+          signal: abortController.signal,
         })
 
-        const departures =
-          data?.departures?.map((item) => normalizeDeparture(item))?.filter(Boolean) || []
+        // Only update state if this request wasn't aborted
+        if (!abortController.signal.aborted) {
+          const departures =
+            data?.departures?.map((item) => normalizeDeparture(item))?.filter(Boolean) || []
 
-        // Extract infotexts from the API response
-        const infotexts = data?.infotexts || []
+          // Extract infotexts from the API response
+          const infotexts = data?.infotexts || []
 
-        this.departures = departures
-        this.infotexts = infotexts
-        this.lastUpdated = new Date().toISOString()
+          this.departures = departures
+          this.infotexts = infotexts
+          this.lastUpdated = new Date().toISOString()
+        }
       } catch (error) {
+        // Don't show errors for aborted requests
+        if (axios.isCancel(error) || error.name === 'CanceledError') {
+          return
+        }
+
         if (error.response?.status === 401) {
           this.departuresError =
             'The provided Golemio API key was rejected. Double-check the token.'
@@ -363,7 +382,14 @@ export const useTimetableStore = defineStore('timetable', {
             'Unable to load departures from the Golemio API right now.'
         }
       } finally {
-        this.departuresLoading = false
+        // Only clear loading state if this request wasn't aborted
+        if (!abortController.signal.aborted) {
+          this.departuresLoading = false
+          // Clear the abort controller reference if this is the current one
+          if (this.departuresAbortController === abortController) {
+            this.departuresAbortController = null
+          }
+        }
       }
     },
     async fetchVehiclePosition(tripId) {
