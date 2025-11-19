@@ -27,11 +27,13 @@ const selectedStopArrivalTime = ref(null)
 const locatingUser = ref(false)
 const userLocation = ref(null)
 const showResetView = ref(false)
+const routeStops = ref([])
 let currentTileLayer = null
 let userMarker = null
 let watchId = null
 let userInteractedWithMap = false
 let initialBoundsSet = false
+let routeStopMarkers = []
 
 const tripId = computed(() => route.params.tripId)
 const stopNode = computed(() => route.params.node)
@@ -41,6 +43,28 @@ const isLoading = computed(() => store.vehicleLoading)
 const transportMeta = computed(() => {
   if (!vehicleData.value) return null
   return getTransportMeta(vehicleData.value.transportKey || vehicleData.value.vehicleType)
+})
+
+const transportTypeLabel = computed(() => {
+  if (!vehicleData.value) return ''
+  const type = vehicleData.value.vehicleType || transportMeta.value?.type || ''
+
+  switch (type) {
+    case 'metro':
+      return 'Metro'
+    case 'tram':
+      return 'Tram'
+    case 'bus':
+      return 'Bus'
+    case 'trolleybus':
+      return 'Trolleybus'
+    case 'train':
+      return 'Train'
+    case 'ferry':
+      return 'Ferry'
+    default:
+      return type ? type.charAt(0).toUpperCase() + type.slice(1) : ''
+  }
 })
 
 const statusLabel = computed(() => {
@@ -204,6 +228,179 @@ const fetchCurrentStopName = async (stopId) => {
   await fetchStopName(stopId, currentStopName)
 }
 
+const fetchAllRouteStops = async () => {
+  if (!tripId.value) return []
+
+  try {
+    const headers = {
+      Accept: 'application/json',
+    }
+
+    // Only send API key in dev mode
+    if (import.meta.env.DEV && import.meta.env.VITE_GOLEMIO_API_KEY) {
+      headers['X-Access-Token'] = import.meta.env.VITE_GOLEMIO_API_KEY
+    }
+
+    // Try multiple API endpoint variations based on official API docs
+    const endpointVariations = [
+      // Variation 1: Public API (optimized for client apps)
+      {
+        name: 'Public API',
+        endpoint: import.meta.env.DEV
+          ? `/golemio/v2/public/gtfs/trips/${encodeURIComponent(tripId.value)}`
+          : '/api/golemio',
+        params: import.meta.env.DEV
+          ? { scopes: 'stop_times' }
+          : { path: `public/gtfs/trips/${encodeURIComponent(tripId.value)}`, scopes: 'stop_times' }
+      },
+      // Variation 2: GTFS Trips with enrichments (includeStops and includeStopTimes)
+      {
+        name: 'GTFS Enriched',
+        endpoint: import.meta.env.DEV
+          ? `/golemio/v2/gtfs/trips/${encodeURIComponent(tripId.value)}`
+          : '/api/golemio',
+        params: import.meta.env.DEV
+          ? { includeStops: true, includeStopTimes: true }
+          : { path: `gtfs/trips/${encodeURIComponent(tripId.value)}`, includeStops: true, includeStopTimes: true }
+      }
+    ]
+
+    for (const variation of endpointVariations) {
+      try {
+        const { data } = await axios.get(variation.endpoint, {
+          headers,
+          params: variation.params,
+          timeout: 15000,
+        })
+
+        // Extract stop times from response
+        const stopTimes = data.stop_times || data.stopTimes || data.stoptimes || []
+
+        if (stopTimes.length > 0) {
+          // Store in component state
+          routeStops.value = stopTimes
+          return stopTimes
+        }
+      } catch (err) {
+        // Continue to next variation
+        continue
+      }
+    }
+
+    return []
+  } catch (error) {
+    console.error('Failed to fetch route stops:', error)
+    return []
+  }
+}
+
+// Display all route stops on the map
+const displayRouteStops = () => {
+  if (!map.value || !routeStops.value || routeStops.value.length === 0) return
+
+  // Skip if map is animating to avoid _latLngToNewLayerPoint errors
+  if (map.value._animatingZoom || map.value._zooming) return
+
+  // Clear existing route stop markers
+  routeStopMarkers.forEach(marker => {
+    if (map.value) {
+      try {
+        map.value.removeLayer(marker)
+      } catch (e) {
+        // Ignore errors during removal (map might be mid-animation)
+      }
+    }
+  })
+  routeStopMarkers = []
+
+  // Remove the single origin stop marker since it will be replaced by route stops
+  if (stopMarker.value && map.value) {
+    try {
+      map.value.removeLayer(stopMarker.value)
+      stopMarker.value = null
+    } catch (e) {
+      // Ignore errors during removal
+    }
+  }
+
+  // Get current stop sequence for color coding
+  const nextStopSequence = vehicleData.value?.nextStop?.sequence
+  const lastStopSequence = vehicleData.value?.lastStop?.sequence
+
+  routeStops.value.forEach((stopTime) => {
+    // Extract coordinates from GeoJSON
+    const coordinates = stopTime.stop?.geometry?.coordinates
+    if (!coordinates || coordinates.length < 2) return
+
+    const [lon, lat] = coordinates
+    const stopName = stopTime.stop?.properties?.stop_name || stopTime.stop_name || 'Unknown Stop'
+    const sequence = stopTime.stop_sequence
+
+    // Determine stop status for color coding
+    let status = 'future'
+
+    if (lastStopSequence && sequence < lastStopSequence) {
+      status = 'past'
+    } else if (lastStopSequence && sequence === lastStopSequence) {
+      status = 'current'
+    } else if (nextStopSequence && sequence === nextStopSequence) {
+      status = 'next'
+    }
+
+    // Check if this is the user's selected origin stop
+    if (store.selectedStop?.gtfsIds) {
+      const isSelectedStop = store.selectedStop.gtfsIds.some(gtfsId => {
+        const stopId = stopTime.stop_id || stopTime.stop?.properties?.stop_id
+        return stopId === gtfsId ||
+               stopId?.replace(/P$/, '') === gtfsId ||
+               gtfsId?.replace(/P$/, '') === stopId
+      })
+      if (isSelectedStop) {
+        status = 'selected'
+      }
+    }
+
+    // Create marker with appropriate icon
+    try {
+      const marker = L.marker([lat, lon], {
+        icon: createRouteStopIcon(status),
+        zIndexOffset: status === 'current' || status === 'next' ? 800 : 700,
+      }).addTo(map.value)
+
+      // Format arrival time
+      const arrivalTime = stopTime.arrival_time || 'N/A'
+      const platformCode = stopTime.stop?.properties?.platform_code
+
+      // Create popup content
+      let popupContent = `
+        <div style="min-width: 150px;">
+          <strong>${stopName}</strong><br>
+          <small>Stop ${sequence}</small><br>
+          Arrival: ${arrivalTime}
+      `
+
+      if (platformCode) {
+        popupContent += `<br>Platform: ${platformCode}`
+      }
+
+      popupContent += '</div>'
+
+      marker.bindPopup(popupContent)
+
+      // Store marker reference
+      routeStopMarkers.push(marker)
+    } catch (e) {
+      // Skip this marker if there's an error (e.g., during zoom animation)
+    }
+  })
+}
+
+// Update route stops color coding based on vehicle progress
+const updateRouteStopsDisplay = () => {
+  // Simply re-render all stops with updated status
+  displayRouteStops()
+}
+
 const fetchSelectedStopArrival = async () => {
   if (!tripId.value || !store.selectedStop) {
     selectedStopArrivalTime.value = null
@@ -235,79 +432,106 @@ const fetchSelectedStopArrival = async () => {
     return
   }
 
-  // Try to fetch from GTFS API as a last resort
-  try {
-    const headers = {
-      Accept: 'application/json',
-    }
-
-    // Only send API key in dev mode
-    if (import.meta.env.DEV && import.meta.env.VITE_GOLEMIO_API_KEY) {
-      headers['X-Access-Token'] = import.meta.env.VITE_GOLEMIO_API_KEY
-    }
-
-    // Fetch trip stop times from Golemio API
-    let endpoint
-    let params = {}
-
-    if (import.meta.env.DEV) {
-      endpoint = `/golemio/v2/gtfs/trips/${encodeURIComponent(tripId.value)}/stoptimes`
-    } else {
-      endpoint = '/api/golemio'
-      params.path = `gtfs/trips/${encodeURIComponent(tripId.value)}/stoptimes`
-    }
-
-    const { data } = await axios.get(endpoint, {
-      headers,
-      params,
-      timeout: 15000,
+  // Use the route stops data we already fetched (no need for another API call)
+  if (routeStops.value && routeStops.value.length > 0 && store.selectedStop?.gtfsIds) {
+    const stopTime = routeStops.value.find(st => {
+      const stopId = st.stop_id || st.stop?.properties?.stop_id
+      return store.selectedStop.gtfsIds.some(gtfsId => {
+        return stopId === gtfsId || stopId?.replace(/P$/, '') === gtfsId || gtfsId?.replace(/P$/, '') === stopId
+      })
     })
 
-    // Find the stop time for our selected stop
-    // Match by GTFS ID from the selected stop
-    const stopTimes = data.stop_times || data.stopTimes || []
+    if (stopTime) {
+      // Get arrival time - prefer actual/predicted over scheduled
+      let timeString =
+        stopTime.arrival_time?.predicted ||
+        stopTime.arrival_time?.actual ||
+        stopTime.arrival_time?.scheduled ||
+        stopTime.arrival_time ||
+        null
 
-    if (store.selectedStop.gtfsIds && store.selectedStop.gtfsIds.length > 0) {
-      const stopTime = stopTimes.find(st => {
-        const stopId = st.stop_id || st.stop?.stop_id
-        return store.selectedStop.gtfsIds.some(gtfsId => {
-          return stopId === gtfsId || stopId?.replace(/P$/, '') === gtfsId || gtfsId?.replace(/P$/, '') === stopId
-        })
-      })
+      // If we got a time string like "19:04:40", convert it to a full date-time
+      if (timeString && typeof timeString === 'string' && timeString.includes(':')) {
+        // Create a date for today with this time
+        const now = new Date()
+        const [hours, minutes, seconds] = timeString.split(':').map(Number)
+        const arrivalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds || 0)
 
-      if (stopTime) {
-        // Get arrival time - prefer actual/predicted over scheduled
-        selectedStopArrivalTime.value =
-          stopTime.arrival_time?.predicted ||
-          stopTime.arrival_time?.actual ||
-          stopTime.arrival_time?.scheduled ||
-          stopTime.arrival_time ||
-          null
+        // If the time is more than 12 hours in the past, it's probably tomorrow
+        if (arrivalDate < now && (now - arrivalDate) > 12 * 60 * 60 * 1000) {
+          arrivalDate.setDate(arrivalDate.getDate() + 1)
+        }
+
+        selectedStopArrivalTime.value = arrivalDate.toISOString()
       } else {
-        selectedStopArrivalTime.value = null
+        selectedStopArrivalTime.value = timeString
       }
     } else {
       selectedStopArrivalTime.value = null
     }
-  } catch (error) {
+  } else {
     // If all methods fail, we just won't show the selected stop section
     selectedStopArrivalTime.value = null
   }
 }
 
-// Custom vehicle icon
-const createVehicleIcon = (color) => {
+// Custom vehicle icon with transport type
+const createVehicleIcon = (color, transportType) => {
+  // Create different icons based on transport type
+  let iconSvg = ''
+
+  switch (transportType) {
+    case 'metro':
+      // Metro train icon
+      iconSvg = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C8 2 4 2.5 4 6v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2l2-2h4l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.51 0 5.63.97 5.92 2H6.08C6.37 4.97 8.49 4 12 4zM6 7h5v3H6V7zm7 0h5v3h-5V7zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+        </svg>
+      `
+      break
+    case 'tram':
+      // Tram icon
+      iconSvg = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20v1h2.23l2-2H14l2 2H18v-1l-1.5-1c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm6 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1-7h-5V6h5v4z"/>
+        </svg>
+      `
+      break
+    case 'bus':
+      // Bus icon
+      iconSvg = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2l2-2h4l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm5.5 3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S16 7.83 16 7s.67-1.5 1.5-1.5zm-11 0C7.33 5.5 8 6.17 8 7s-.67 1.5-1.5 1.5S5 7.83 5 7s.67-1.5 1.5-1.5zM6 9h12v3H6V9zm1.5 8c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+        </svg>
+      `
+      break
+    case 'trolleybus':
+      // Trolleybus icon (bus with antenna)
+      iconSvg = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2l2-2h4l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM6 9h12v3H6V9zm1.5 8c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+          <path d="M10 1L8 4h2V1zm4 0v3h2l-2-3z"/>
+        </svg>
+      `
+      break
+    default:
+      // Generic vehicle icon
+      iconSvg = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2L4 6v10l8 4 8-4V6l-8-4zm0 2.18l5.5 2.75L12 9.68 6.5 6.93 12 4.18zM6 8.93l5 2.5V19l-5-2.5V8.93zm7 10.07v-7.57l5-2.5V16.5l-5 2.5z"/>
+        </svg>
+      `
+  }
+
   return L.divIcon({
     className: 'vehicle-marker',
     html: `
       <div class="vehicle-marker-inner" style="background-color: ${color}">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="white">
-          <path d="M8 2L3 6v6l5 2 5-2V6L8 2z"/>
-        </svg>
+        ${iconSvg}
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   })
 }
 
@@ -324,6 +548,34 @@ const createStopIcon = () => {
     `,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
+  })
+}
+
+// Custom route stop icon with color coding
+const createRouteStopIcon = (status = 'future') => {
+  const colors = {
+    past: '#888888',      // Gray for past stops
+    current: '#9de67a',   // Green for current stop
+    next: '#4ad1ff',      // Bright blue for next stop
+    future: '#5a9fd4',    // Regular blue for future stops
+    selected: '#9de67a'   // Green for the user's selected origin stop
+  }
+
+  const color = colors[status] || colors.future
+  const size = status === 'current' || status === 'next' ? 20 : 16
+  const outerSize = status === 'current' || status === 'next' ? 28 : 24
+
+  return L.divIcon({
+    className: `route-stop-marker route-stop-marker--${status}`,
+    html: `
+      <div class="route-stop-marker-inner" style="background-color: ${color}">
+        <svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="white">
+          <circle cx="8" cy="8" r="5"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [outerSize, outerSize],
+    iconAnchor: [outerSize / 2, outerSize / 2],
   })
 }
 
@@ -347,13 +599,25 @@ const initMap = () => {
     showResetView.value = true
   })
 
-  map.value.on('zoomstart', (e) => {
-    // Only mark as user interaction if it's not programmatic
-    // Leaflet doesn't provide a direct way to distinguish, but we can check
-    // if the zoom was triggered by user (wheel/buttons) vs fitBounds
-    if (!e.originalEvent && !map.value._animatingZoom) return
+  map.value.on('zoomstart', () => {
+    // Mark as user interaction on any zoom
+    // This prevents auto-recentering from resetting user's zoom level
     userInteractedWithMap = true
     showResetView.value = true
+  })
+
+  // Redisplay route stops and update vehicle position after zoom animation completes
+  map.value.on('zoomend', () => {
+    // Use setTimeout to ensure zoom animation is fully complete
+    setTimeout(() => {
+      if (routeStops.value && routeStops.value.length > 0) {
+        displayRouteStops()
+      }
+      // Also update vehicle position (which updates route line)
+      if (vehicleData.value) {
+        updateVehiclePosition()
+      }
+    }, 50)
   })
 }
 
@@ -393,6 +657,7 @@ const updateVehiclePosition = () => {
 
   const position = [lat, lon]
   const color = transportMeta.value?.color || '#666'
+  const transportType = vehicleData.value.vehicleType || transportMeta.value?.type || 'bus'
 
   // Always update markers and lines, but only adjust map bounds if user hasn't interacted
   // This ensures the line connecting stop and vehicle updates in real-time
@@ -400,10 +665,10 @@ const updateVehiclePosition = () => {
   // Update or create vehicle marker (always update position)
   if (vehicleMarker.value) {
     vehicleMarker.value.setLatLng(position)
-    vehicleMarker.value.setIcon(createVehicleIcon(color))
+    vehicleMarker.value.setIcon(createVehicleIcon(color, transportType))
   } else {
     vehicleMarker.value = L.marker(position, {
-      icon: createVehicleIcon(color),
+      icon: createVehicleIcon(color, transportType),
       zIndexOffset: 1000,
     }).addTo(map.value)
 
@@ -414,130 +679,126 @@ const updateVehiclePosition = () => {
     `)
   }
 
-  // Add stop marker if we have stop coordinates
-  if (store.selectedStop) {
-    const stopPos = [store.selectedStop.lat, store.selectedStop.lon]
+  // Skip route line updates during zoom animations to avoid _latLngToNewLayerPoint errors
+  if (map.value._animatingZoom || map.value._zooming) {
+    lastUpdate.value = new Date()
+    return
+  }
 
-    if (!stopMarker.value) {
-      stopMarker.value = L.marker(stopPos, {
-        icon: createStopIcon(),
-        zIndexOffset: 900,
-      }).addTo(map.value)
+  // Draw actual route line if geometry is available (no more dashed lines since we show all stops)
+  let routeCoords = null
+  let isActualRoute = false
 
-      stopMarker.value.bindPopup(`
-        <strong>${store.selectedStop.displayName}</strong><br>
-        Origin stop<br>
-        <small>Node ${store.selectedStop.node}</small>
-      `)
-    }
-
-    // Calculate distance between stop and vehicle
-    const stopLatLng = L.latLng(stopPos)
-    const vehicleLatLng = L.latLng(position)
-    const distanceMeters = stopLatLng.distanceTo(vehicleLatLng)
-    const distance = (distanceMeters / 1000).toFixed(2) // km
-
-    // Prepare route coordinates
-    let routeCoords = [stopPos, position] // Default: straight line
-    let isActualRoute = false
-
-    // Try to use actual route geometry if available
-    if (vehicleData.value.routeShape) {
-      // GTFS shape format: array of {lat, lon} or {shape_pt_lat, shape_pt_lon}
-      const shapePoints = vehicleData.value.routeShape
-      if (Array.isArray(shapePoints) && shapePoints.length > 0) {
-        routeCoords = shapePoints.map(pt => [
-          pt.lat || pt.shape_pt_lat,
-          pt.lon || pt.shape_pt_lon
-        ]).filter(coord => coord[0] && coord[1])
-        if (routeCoords.length > 1) {
-          isActualRoute = true
-        }
-      }
-    } else if (vehicleData.value.geometry?.type === 'LineString') {
-      // GeoJSON LineString format: coordinates are [lon, lat]
-      const coords = vehicleData.value.geometry.coordinates
-      if (Array.isArray(coords) && coords.length > 0) {
-        routeCoords = coords.map(coord => [coord[1], coord[0]]) // Swap to [lat, lon]
-        if (routeCoords.length > 1) {
-          isActualRoute = true
-        }
+  // Try to use actual route geometry if available
+  if (vehicleData.value.routeShape) {
+    // GTFS shape format: array of {lat, lon} or {shape_pt_lat, shape_pt_lon}
+    const shapePoints = vehicleData.value.routeShape
+    if (Array.isArray(shapePoints) && shapePoints.length > 0) {
+      routeCoords = shapePoints.map(pt => [
+        pt.lat || pt.shape_pt_lat,
+        pt.lon || pt.shape_pt_lon
+      ]).filter(coord => coord[0] && coord[1])
+      if (routeCoords.length > 1) {
+        isActualRoute = true
       }
     }
+  } else if (vehicleData.value.geometry?.type === 'LineString') {
+    // GeoJSON LineString format: coordinates are [lon, lat]
+    const coords = vehicleData.value.geometry.coordinates
+    if (Array.isArray(coords) && coords.length > 0) {
+      routeCoords = coords.map(coord => [coord[1], coord[0]]) // Swap to [lat, lon]
+      if (routeCoords.length > 1) {
+        isActualRoute = true
+      }
+    }
+  }
 
-    // Always update the route line (even when user has interacted)
-    if (routeLine.value) {
-      // Update existing line
-      routeLine.value.setLatLngs(routeCoords)
-      routeLine.value.setStyle({
-        color: color,
-        weight: isActualRoute ? 4 : 5,
-        opacity: isActualRoute ? 0.9 : 0.8,
-        dashArray: isActualRoute ? null : '12, 8',
-      })
-
-      // Update popup with current distance
-      routeLine.value.setPopupContent(`
-        <strong>Distance:</strong> ${distance} km<br>
-        <small>${isActualRoute ? 'Actual route path' : 'Direct line from stop to vehicle'}</small>
-      `)
-    } else {
-      // Create new line - use markRaw to prevent Vue reactivity on Leaflet objects
-      routeLine.value = markRaw(
-        L.polyline(routeCoords, {
+  // Only draw route line if we have actual route geometry
+  if (isActualRoute && routeCoords) {
+    try {
+      if (routeLine.value) {
+        // Update existing line
+        routeLine.value.setLatLngs(routeCoords)
+        routeLine.value.setStyle({
           color: color,
-          weight: isActualRoute ? 4 : 5,
-          opacity: isActualRoute ? 0.9 : 0.8,
-          dashArray: isActualRoute ? null : '12, 8',
-          lineCap: 'round',
-          lineJoin: 'round',
-          interactive: true,
-        }).addTo(map.value)
-      )
+          weight: 4,
+          opacity: 0.7,
+        })
+      } else {
+        // Create new line - use markRaw to prevent Vue reactivity on Leaflet objects
+        routeLine.value = markRaw(
+          L.polyline(routeCoords, {
+            color: color,
+            weight: 4,
+            opacity: 0.7,
+            lineCap: 'round',
+            lineJoin: 'round',
+            interactive: true,
+          }).addTo(map.value)
+        )
 
-      routeLine.value.bindPopup(`
-        <strong>Distance:</strong> ${distance} km<br>
-        <small>${isActualRoute ? 'Actual route path' : 'Direct line from stop to vehicle'}</small>
-      `)
+        routeLine.value.bindPopup(`
+          <strong>Route Path</strong><br>
+          <small>Full route geometry</small>
+        `)
+      }
+    } catch (e) {
+      // Ignore errors during zoom animation
+    }
+  } else {
+    // Remove route line if no geometry available
+    if (routeLine.value && map.value) {
+      try {
+        map.value.removeLayer(routeLine.value)
+        routeLine.value = null
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }
+
+  // Only adjust map view on initial load or if user hasn't interacted
+  if (!initialBoundsSet || !userInteractedWithMap) {
+    // Collect all points for bounds calculation
+    let boundsPoints = [position]
+
+    // Add route stops if available
+    if (routeStops.value && routeStops.value.length > 0) {
+      routeStops.value.forEach(stopTime => {
+        const coords = stopTime.stop?.geometry?.coordinates
+        if (coords && coords.length >= 2) {
+          boundsPoints.push([coords[1], coords[0]])
+        }
+      })
+    } else if (store.selectedStop) {
+      // Fallback: just include vehicle and selected stop
+      boundsPoints.push([store.selectedStop.lat, store.selectedStop.lon])
     }
 
-    // Only adjust map view on initial load or if user hasn't interacted
-    if (!initialBoundsSet || !userInteractedWithMap) {
-      // Fit bounds to show both stop and vehicle (and route if available)
-      let boundsPoints = [stopPos, position]
-
-      // If we have actual route data, include all route points for better framing
-      if (isActualRoute && routeCoords.length > 2) {
-        boundsPoints = routeCoords
-      }
-
+    if (boundsPoints.length > 1) {
       const bounds = L.latLngBounds(boundsPoints)
 
       // Adjust padding based on screen size
       const isMobile = window.innerWidth <= 768
 
-      // If very close (< 200m), limit zoom to avoid overlap
-      const maxZoomLevel = distanceMeters < 200 ? 15 : (isMobile ? 16 : 17)
-
       const paddingOptions = isMobile
         ? {
-            // Mobile: map is 50vh, so use smaller balanced padding to center points in map area
             paddingTopLeft: [20, 40],
             paddingBottomRight: [20, 40],
-            maxZoom: maxZoomLevel,
+            maxZoom: 16,
           }
         : {
-            paddingTopLeft: [80, 80],      // Desktop: left and top padding
-            paddingBottomRight: [380, 80], // Desktop: account for sidebar on right
-            maxZoom: maxZoomLevel,
+            paddingTopLeft: [80, 80],
+            paddingBottomRight: [380, 80],
+            maxZoom: 17,
           }
 
       map.value.fitBounds(bounds, paddingOptions)
-      initialBoundsSet = true
+    } else {
+      // Only vehicle position, center on it
+      map.value.setView(position, 15)
     }
-  } else if (!initialBoundsSet || !userInteractedWithMap) {
-    // No stop selected, just center on vehicle (only on initial load)
-    map.value.setView(position, 15)
+
     initialBoundsSet = true
   }
 
@@ -554,6 +815,12 @@ const startTracking = async () => {
     await store.fetchVehiclePosition(tripId.value)
     updateVehiclePosition()
 
+    // Fetch all route stops for display on map
+    await fetchAllRouteStops()
+
+    // Display route stops on map
+    displayRouteStops()
+
     // Fetch arrival time for selected stop
     await fetchSelectedStopArrival()
 
@@ -562,6 +829,8 @@ const startTracking = async () => {
       try {
         await store.fetchVehiclePosition(tripId.value)
         updateVehiclePosition()
+        // Update stop markers color coding based on vehicle progress
+        updateRouteStopsDisplay()
         trackingError.value = null
       } catch (error) {
         trackingError.value = 'Failed to update vehicle position'
@@ -857,6 +1126,7 @@ onUnmounted(() => {
           {{ transportMeta.code }}
         </span>
         <span class="line-code">{{ vehicleData.line }}</span>
+        <span v-if="transportTypeLabel" class="transport-type-label">{{ transportTypeLabel }}</span>
         <span class="destination">→ {{ vehicleData.destination }}</span>
       </div>
 
@@ -989,11 +1259,16 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="vehicleData.vehicleNumber || vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="detail-section">
+          <div v-if="transportTypeLabel || vehicleData.vehicleNumber || vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="detail-section">
             <h3>Vehicle</h3>
-            <p v-if="vehicleData.vehicleNumber" class="vehicle-number">
-              #{{ vehicleData.vehicleNumber }}
-            </p>
+            <div v-if="transportTypeLabel || vehicleData.vehicleNumber" class="vehicle-info-row">
+              <p v-if="transportTypeLabel" class="vehicle-type">
+                <strong>Type:</strong> {{ transportTypeLabel }}
+              </p>
+              <p v-if="vehicleData.vehicleNumber" class="vehicle-number">
+                <strong>ID:</strong> #{{ vehicleData.vehicleNumber }}
+              </p>
+            </div>
 
             <div v-if="vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="amenities">
               <span v-if="vehicleData.wheelchairAccessible" class="amenity-badge" title="Wheelchair Accessible">
@@ -1101,6 +1376,18 @@ onUnmounted(() => {
 .line-code {
   font-weight: 600;
   font-size: 1.1rem;
+}
+
+.transport-type-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  background: rgba(157, 230, 122, 0.15);
+  border: 1px solid rgba(157, 230, 122, 0.3);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .destination {
@@ -1284,14 +1571,30 @@ onUnmounted(() => {
 }
 
 :deep(.vehicle-marker-inner) {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: 2px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.8);
+  border: 3px solid white;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: vehicle-pulse 2s ease-in-out infinite;
+}
+
+:deep(.vehicle-marker:hover .vehicle-marker-inner) {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.9);
+}
+
+@keyframes vehicle-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.8);
+  }
+  50% {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(157, 230, 122, 0.6);
+  }
 }
 
 :deep(.stop-marker) {
@@ -1309,6 +1612,52 @@ onUnmounted(() => {
   background: var(--text-secondary);
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Route stop markers */
+:deep(.route-stop-marker) {
+  background: none;
+  border: none;
+}
+
+:deep(.route-stop-marker-inner) {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:deep(.route-stop-marker:hover .route-stop-marker-inner) {
+  transform: scale(1.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* Special styling for current and next stops */
+:deep(.route-stop-marker--current .route-stop-marker-inner),
+:deep(.route-stop-marker--next .route-stop-marker-inner) {
+  border-width: 3px;
+  box-shadow: 0 3px 12px rgba(157, 230, 122, 0.4);
+}
+
+:deep(.route-stop-marker--selected .route-stop-marker-inner) {
+  border-width: 3px;
+  border-color: #9de67a;
+  box-shadow: 0 3px 12px rgba(157, 230, 122, 0.5);
+  animation: pulse-stop 2s ease-in-out infinite;
+}
+
+@keyframes pulse-stop {
+  0%, 100% {
+    box-shadow: 0 3px 12px rgba(157, 230, 122, 0.5);
+  }
+  50% {
+    box-shadow: 0 3px 16px rgba(157, 230, 122, 0.8);
+  }
 }
 
 /* Leaflet polyline styling */
@@ -1426,11 +1775,27 @@ onUnmounted(() => {
   border-radius: 0.25rem;
 }
 
+.vehicle-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.vehicle-type,
 .vehicle-number {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.9rem;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
+  margin: 0;
+}
+
+.vehicle-type strong,
+.vehicle-number strong {
+  color: var(--text-tertiary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .amenities {
