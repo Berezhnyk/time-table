@@ -132,7 +132,6 @@ const fetchNextStopName = async (stopId) => {
       const { data } = await axios.get(`/api/golemio/gtfs/stops/${encodeURIComponent(stopId)}`)
       nextStopName.value = data.stop_name || data.name || 'Unknown Stop'
     } catch (error) {
-      console.error('Failed to fetch stop name for:', stopId, error)
       nextStopName.value = 'Next Stop'
     }
   }

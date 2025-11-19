@@ -216,7 +216,6 @@ const loadStopsFromCache = () => {
 
     return data
   } catch (error) {
-    console.warn('Failed to load stops from cache:', error)
     return null
   }
 }
@@ -230,7 +229,7 @@ const saveStopsToCache = (stops) => {
     }
     sessionStorage.setItem(STOPS_CACHE_KEY, JSON.stringify(cacheData))
   } catch (error) {
-    console.warn('Failed to save stops to cache:', error)
+    // Silent fail - cache is optional
   }
 }
 
@@ -401,8 +400,6 @@ export const useTimetableStore = defineStore('timetable', {
           endpoint = '/api/golemio'
         }
 
-        console.log('Fetching vehicle by trip ID:', tripId)
-
         let data
         try {
           const response = await axios.get(endpoint, {
@@ -417,8 +414,6 @@ export const useTimetableStore = defineStore('timetable', {
         } catch (error) {
           // If direct trip ID query fails, fallback to filtering by route
           if (error.response?.status === 404 && targetDeparture?.line) {
-            console.log('Trip ID not found, falling back to route filter:', targetDeparture.line)
-
             const fallbackParams = {
               routeShortName: targetDeparture.line,
             }
@@ -450,14 +445,10 @@ export const useTimetableStore = defineStore('timetable', {
 
         // Check if we got a single feature (direct trip ID query response)
         if (data?.geometry && data?.properties) {
-          console.log('Got single feature response (direct trip ID match)')
           feature = data
         } else {
           // We got a FeatureCollection (route filter response)
           const features = data?.features || []
-
-          console.log('Target departure:', targetDeparture)
-          console.log('Total vehicles available:', features.length)
 
           // Try to find vehicle by matching trip ID in different property locations
           feature = features.find(f => {
@@ -470,26 +461,13 @@ export const useTimetableStore = defineStore('timetable', {
               props.trip_id ||
               null
 
-            if (vehicleTripId === tripId) {
-              console.log('Found exact match by trip ID:', vehicleTripId)
-              return true
-            }
-            return false
+            return vehicleTripId === tripId
           })
         }
 
         // Fallback: If exact trip ID match not found, try matching by line and destination
         if (!feature && targetDeparture) {
-          console.log('No exact trip ID match, trying line + destination matching...')
-
-          // Also log some vehicle info to debug
-          if (features.length > 0) {
-            const sample = features.slice(0, 3).map(f => ({
-              line: f.properties?.trip?.gtfs?.route_short_name,
-              dest: f.properties?.trip?.gtfs?.trip_headsign,
-            }))
-            console.log('Sample vehicles (first 3):', sample)
-          }
+          const features = data?.features || []
 
           feature = features.find(f => {
             const props = f.properties || {}
@@ -506,28 +484,14 @@ export const useTimetableStore = defineStore('timetable', {
               props.headsign ||
               ''
 
-            const matches =
+            return (
               vehicleLine === targetDeparture.line &&
               vehicleDestination === targetDeparture.destination
-
-            if (matches) {
-              console.log('Found match by line + destination:', vehicleLine, vehicleDestination)
-            }
-
-            return matches
+            )
           })
-
-          if (!feature) {
-            console.log('No match found for line:', targetDeparture.line, 'destination:', targetDeparture.destination)
-          }
         }
 
         if (!feature) {
-          // Log sample vehicle data to help debug
-          if (features.length > 0) {
-            console.log('Sample vehicle properties:', features[0].properties)
-          }
-
           // Provide more specific error message
           const vehicleDesc = targetDeparture
             ? `Line ${targetDeparture.line} to ${targetDeparture.destination}`

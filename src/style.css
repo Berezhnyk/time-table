@@ -77,13 +77,6 @@ a:hover,
   color: rgba(157, 230, 122, 0.8);
 }
 
-.header-meta {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-end;
-  font-size: 0.95rem;
-}
-
 .app-main {
   display: grid;
   grid-template-columns: minmax(320px, 420px) 1fr;
@@ -176,16 +169,6 @@ input:focus {
   background: rgba(157, 230, 122, 0.2);
 }
 
-.stop-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 420px;
-  overflow: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(157, 230, 122, 0.2);
-}
-
 .group-list {
   list-style: none;
   margin: 0;
@@ -237,36 +220,6 @@ input:focus {
   margin: 0.2rem 0 0;
   color: rgba(157, 230, 122, 0.75);
   font-size: 0.85rem;
-}
-
-.stop-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 0.9rem 1rem;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(157, 230, 122, 0.08);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-}
-
-.stop-item:last-child {
-  border-bottom: none;
-}
-
-.stop-item:hover,
-.stop-item.active {
-  background: rgba(157, 230, 122, 0.1);
-}
-
-.stop-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
 }
 
 .stop-name {
@@ -626,10 +579,6 @@ input:focus {
     padding: 1rem;
   }
 
-  .stop-list {
-    max-height: 300px;
-  }
-
   .group-list {
     max-height: 460px;
   }
@@ -656,17 +605,6 @@ input:focus {
 
   .app-header h1 {
     font-size: 1.75rem;
-  }
-
-  .header-meta {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .header-meta button {
-    width: 100%;
   }
 
   .input-row {
@@ -711,10 +649,6 @@ input:focus {
 
   .map-container {
     height: 280px;
-  }
-
-  .stop-list {
-    max-height: 280px;
   }
 
   .group-list {
@@ -793,10 +727,6 @@ input:focus {
 
   .map-container {
     height: 240px;
-  }
-
-  .stop-item {
-    padding: 0.75rem 0.75rem;
   }
 
   .stop-name {

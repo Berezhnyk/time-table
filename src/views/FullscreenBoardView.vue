@@ -15,9 +15,9 @@ const refreshTimer = ref(null)
 const updatePageTitle = () => {
   if (store.selectedStop) {
     const stopName = store.selectedStop.altName || store.selectedStop.displayName
-    document.title = `${stopName} (Fullscreen) - Prague Departure Board`
+    document.title = `${stopName} (Fullscreen) - timetable.guide`
   } else {
-    document.title = 'Prague Departure Board'
+    document.title = 'timetable.guide'
   }
 }
 

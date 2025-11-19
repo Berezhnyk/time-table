@@ -1,4 +1,4 @@
-# Prague PID Departure Board
+# timetable.guide
 
 A single-page Vue 3 application that combines the PID stop list with the Golemio departure board endpoint to recreate the classic black-and-green displays you see in Prague bus and metro stations. Users can locate a stop through instant search or pick it directly from an interactive map, then view upcoming departures with live delay indicators.
 

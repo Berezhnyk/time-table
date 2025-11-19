@@ -69,8 +69,6 @@ const renderMarkers = () => {
   markerLayer.clearLayers()
   markers.clear()
 
-  console.log('Rendering markers, selected stop:', store.selectedStop?.node)
-
   store.stops.forEach((stop) => {
     const isSelected = store.selectedStop?.node === stop.node
     const marker = L.marker([stop.lat, stop.lon], {
@@ -81,8 +79,6 @@ const renderMarkers = () => {
     markerLayer.addLayer(marker)
     markers.set(stop.node, { marker, stop })
   })
-
-  console.log('Total markers rendered:', markers.size)
 }
 
 const highlightSelectedStop = () => {
@@ -90,19 +86,10 @@ const highlightSelectedStop = () => {
     return
   }
 
-  console.log('Selected stop node:', store.selectedStop.node)
-  let selectedCount = 0
-
   markers.forEach(({ marker, stop }) => {
     const isSelected = stop.node === store.selectedStop.node
-    if (isSelected) {
-      console.log('Highlighting stop:', stop.displayName, stop.node)
-      selectedCount++
-    }
     marker.setIcon(createMarkerIcon(stop, isSelected))
   })
-
-  console.log('Total selected markers:', selectedCount)
 
   if (markerLayer) {
     markerLayer.refreshClusters()

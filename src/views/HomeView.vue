@@ -14,9 +14,9 @@ const syncingRoute = ref(false)
 const updatePageTitle = () => {
   if (store.selectedStop) {
     const stopName = store.selectedStop.altName || store.selectedStop.displayName
-    document.title = `${stopName} - Prague Departure Board`
+    document.title = `${stopName} - timetable.guide`
   } else {
-    document.title = 'Prague Departure Board'
+    document.title = 'timetable.guide'
   }
 }
 
@@ -85,7 +85,7 @@ watch(
     <header class="app-header">
       <div>
         <p class="eyebrow">PID Open Data</p>
-        <h1>Prague Departure Board</h1>
+        <h1>timetable.guide</h1>
         <p class="subtext">
           Search or pick any PID stop to see its live departures, powered by
           <a
@@ -96,9 +96,6 @@ watch(
             >public datasets</a
           >.
         </p>
-      </div>
-      <div class="header-meta">
-        <p>Stops loaded: {{ store.stopCount || '—' }}</p>
       </div>
     </header>
 
