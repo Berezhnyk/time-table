@@ -32,7 +32,6 @@ watch(locale, (newLocale) => {
       :title="languages[lang]?.name"
       :aria-label="`Switch to ${languages[lang]?.name}`"
     >
-      <span class="flag" aria-hidden="true">{{ languages[lang]?.flag }}</span>
       <span class="lang-code">{{ languages[lang]?.code }}</span>
     </button>
   </div>
@@ -73,22 +72,6 @@ watch(locale, (newLocale) => {
   font-weight: 600;
 }
 
-.flag {
-  font-size: 1rem;
-  line-height: 1;
-  /* Hide flags by default to avoid showing broken emoji boxes */
-  display: none;
-}
-
-/* Only show flags on systems that properly support color emoji */
-@media (prefers-color-scheme: light), (prefers-color-scheme: dark) {
-  @supports (font-family: "Apple Color Emoji") or (font-family: "Segoe UI Emoji") or (font-family: "Noto Color Emoji") {
-    .flag {
-      display: inline;
-    }
-  }
-}
-
 .lang-code {
   font-size: 0.75rem;
   letter-spacing: 0.03em;
@@ -98,10 +81,6 @@ watch(locale, (newLocale) => {
 @media (max-width: 768px) {
   .language-btn {
     padding: 0.35rem 0.5rem;
-  }
-
-  .flag {
-    font-size: 0.9rem;
   }
 }
 </style>
