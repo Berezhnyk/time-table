@@ -5,9 +5,9 @@ import { watch } from 'vue'
 const { locale, availableLocales } = useI18n()
 
 const languages = {
-  en: { name: 'English', flag: '🇬🇧' },
-  cs: { name: 'Čeština', flag: '🇨🇿' },
-  uk: { name: 'Українська', flag: '🇺🇦' }
+  en: { name: 'English', flag: '🇬🇧', code: 'ENG' },
+  cs: { name: 'Čeština', flag: '🇨🇿', code: 'ČES' },
+  uk: { name: 'Українська', flag: '🇺🇦', code: 'УКР' }
 }
 
 const changeLanguage = (lang) => {
@@ -32,8 +32,8 @@ watch(locale, (newLocale) => {
       :title="languages[lang]?.name"
       :aria-label="`Switch to ${languages[lang]?.name}`"
     >
-      <span class="flag">{{ languages[lang]?.flag }}</span>
-      <span class="lang-code">{{ lang.toUpperCase() }}</span>
+      <span class="flag" aria-hidden="true">{{ languages[lang]?.flag }}</span>
+      <span class="lang-code">{{ languages[lang]?.code }}</span>
     </button>
   </div>
 </template>
@@ -78,9 +78,17 @@ watch(locale, (newLocale) => {
   line-height: 1;
 }
 
+/* Hide flag if emoji fonts are not supported */
+@supports not (font-family: "Noto Color Emoji") {
+  .flag {
+    display: none;
+  }
+}
+
 .lang-code {
-  font-size: 0.7rem;
-  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {
@@ -88,8 +96,8 @@ watch(locale, (newLocale) => {
     padding: 0.35rem 0.5rem;
   }
 
-  .lang-code {
-    display: none;
+  .flag {
+    font-size: 0.9rem;
   }
 }
 </style>
