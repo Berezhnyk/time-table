@@ -76,12 +76,16 @@ watch(locale, (newLocale) => {
 .flag {
   font-size: 1rem;
   line-height: 1;
+  /* Hide flags by default to avoid showing broken emoji boxes */
+  display: none;
 }
 
-/* Hide flag if emoji fonts are not supported */
-@supports not (font-family: "Noto Color Emoji") {
-  .flag {
-    display: none;
+/* Only show flags on systems that properly support color emoji */
+@media (prefers-color-scheme: light), (prefers-color-scheme: dark) {
+  @supports (font-family: "Apple Color Emoji") or (font-family: "Segoe UI Emoji") or (font-family: "Noto Color Emoji") {
+    .flag {
+      display: inline;
+    }
   }
 }
 
