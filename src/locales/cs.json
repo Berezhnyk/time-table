@@ -100,6 +100,9 @@
     "vehicle": "Vozidlo",
     "type": "Typ",
     "id": "ID",
+    "noTrackingData": "Pro toto vozidlo nejsou k dispozici informace o sledování.",
+    "noTrackingDataDescription": "Vozidlo možná ještě nezačalo svou trasu, již ji dokončilo, nebo pro tento odjezd není k dispozici sledování v reálném čase.",
+    "goBackToStop": "Zpět na zastávku",
     "amenities": {
       "accessible": "♿ Bezbariérový",
       "ac": "❄ Klimatizace",
@@ -115,7 +118,7 @@
     "lastUpdate": "Poslední aktualizace",
     "trackingNotActive": "Sledování v reálném čase není aktivní",
     "locatingVehicle": "Vyhledávám vozidlo...",
-    "footer": "Sledování vozidel v reálném čase pomocí Golemio API. Pozice se aktualizuje každých 5 sekund.",
+    "footer": "Sledování vozidel v reálném čase pomocí Golemio API. Pozice se aktualizuje každou sekundu.",
     "time": {
       "inMinutes": "za {minutes} min",
       "arrivingNow": "právě přijíždí",

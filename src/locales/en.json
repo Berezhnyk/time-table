@@ -100,6 +100,9 @@
     "vehicle": "Vehicle",
     "type": "Type",
     "id": "ID",
+    "noTrackingData": "No tracking information available for this vehicle.",
+    "noTrackingDataDescription": "The vehicle may not have started its route yet, may have already completed it, or real-time tracking may not be available for this departure.",
+    "goBackToStop": "Go back to stop",
     "amenities": {
       "accessible": "♿ Accessible",
       "ac": "❄ AC",
@@ -115,7 +118,7 @@
     "lastUpdate": "Last Update",
     "trackingNotActive": "Real-time tracking not active",
     "locatingVehicle": "Locating vehicle...",
-    "footer": "Real-time vehicle tracking powered by Golemio API. Position updates every 5 seconds.",
+    "footer": "Real-time vehicle tracking powered by Golemio API. Position updates every second.",
     "time": {
       "inMinutes": "in {minutes} min",
       "arrivingNow": "arriving now",

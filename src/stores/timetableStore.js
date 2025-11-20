@@ -448,29 +448,48 @@ export const useTimetableStore = defineStore('timetable', {
           })
           data = response.data
         } catch (error) {
-          // If direct trip ID query fails, fallback to filtering by route
-          if (error.response?.status === 404 && targetDeparture?.line) {
-            const fallbackParams = {
-              routeShortName: targetDeparture.line,
+          // Check if it's a 500 error with 404 in the body (common API issue)
+          const is404Error = error.response?.status === 404 ||
+                            (error.response?.status === 500 &&
+                             (error.response?.data?.includes?.('404') ||
+                              error.response?.data?.message?.includes?.('404') ||
+                              error.response?.data?.message?.includes?.('not found')))
+
+          // If direct trip ID query fails with 404, fallback to filtering by route
+          if (is404Error && targetDeparture?.line) {
+            try {
+              const fallbackParams = {
+                routeShortName: targetDeparture.line,
+              }
+
+              if (!import.meta.env.DEV) {
+                fallbackParams.path = 'vehiclepositions'
+              }
+
+              const fallbackEndpoint = import.meta.env.DEV
+                ? '/golemio/v2/vehiclepositions'
+                : '/api/golemio'
+
+              const fallbackResponse = await axios.get(fallbackEndpoint, {
+                headers,
+                params: fallbackParams,
+                paramsSerializer: {
+                  indexes: null,
+                },
+                timeout: 15000,
+              })
+              data = fallbackResponse.data
+            } catch (fallbackError) {
+              // If fallback also fails, throw a 404-style error
+              const notFoundError = new Error('VEHICLE_NOT_FOUND')
+              notFoundError.isNotFound = true
+              throw notFoundError
             }
-
-            if (!import.meta.env.DEV) {
-              fallbackParams.path = 'vehiclepositions'
-            }
-
-            const fallbackEndpoint = import.meta.env.DEV
-              ? '/golemio/v2/vehiclepositions'
-              : '/api/golemio'
-
-            const fallbackResponse = await axios.get(fallbackEndpoint, {
-              headers,
-              params: fallbackParams,
-              paramsSerializer: {
-                indexes: null,
-              },
-              timeout: 15000,
-            })
-            data = fallbackResponse.data
+          } else if (is404Error) {
+            // Direct 404 without fallback option
+            const notFoundError = new Error('VEHICLE_NOT_FOUND')
+            notFoundError.isNotFound = true
+            throw notFoundError
           } else {
             throw error
           }
@@ -528,14 +547,10 @@ export const useTimetableStore = defineStore('timetable', {
         }
 
         if (!feature) {
-          // Provide more specific error message
-          const vehicleDesc = targetDeparture
-            ? `Line ${targetDeparture.line} to ${targetDeparture.destination}`
-            : 'This vehicle'
-
-          throw new Error(
-            `${vehicleDesc} is not currently being tracked. The vehicle may not have started its route yet, may have already completed it, or real-time tracking may not be available for this departure.`
-          )
+          // Throw a not-found error
+          const notFoundError = new Error('VEHICLE_NOT_FOUND')
+          notFoundError.isNotFound = true
+          throw notFoundError
         }
 
         const props = feature.properties || {}
@@ -590,8 +605,13 @@ export const useTimetableStore = defineStore('timetable', {
           },
         }
       } catch (error) {
-        this.vehicleError =
-          error?.message || 'Unable to fetch vehicle position from the Golemio API.'
+        // Check if this is a "not found" error (404 or vehicle not being tracked)
+        if (error.isNotFound || error.message === 'VEHICLE_NOT_FOUND') {
+          this.vehicleError = 'VEHICLE_NOT_FOUND'
+        } else {
+          this.vehicleError =
+            error?.message || 'Unable to fetch vehicle position from the Golemio API.'
+        }
         throw error
       } finally {
         this.vehicleLoading = false

@@ -1,12 +1,15 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimetableStore } from '../stores/timetableStore'
 import { useThemeStore } from '../stores/themeStore'
 import { getTransportMeta } from '../utils/transport'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+const { t } = useI18n()
 
 const store = useTimetableStore()
 const themeStore = useThemeStore()
@@ -53,29 +56,29 @@ const transportTypeLabel = computed(() => {
 
   switch (type) {
     case 'metro':
-      return 'Metro'
+      return t('vehicleTracker.vehicleTypes.metro')
     case 'tram':
-      return 'Tram'
+      return t('vehicleTracker.vehicleTypes.tram')
     case 'bus':
-      return 'Bus'
+      return t('vehicleTracker.vehicleTypes.bus')
     case 'trolleybus':
-      return 'Trolleybus'
+      return t('vehicleTracker.vehicleTypes.trolleybus')
     case 'train':
-      return 'Train'
+      return t('vehicleTracker.vehicleTypes.train')
     case 'ferry':
-      return 'Ferry'
+      return t('vehicleTracker.vehicleTypes.ferry')
     default:
       return type ? type.charAt(0).toUpperCase() + type.slice(1) : ''
   }
 })
 
 const statusLabel = computed(() => {
-  if (!vehicleData.value) return 'Waiting for data...'
+  if (!vehicleData.value) return t('vehicleTracker.waitingForData')
 
   const delay = vehicleData.value.delay
-  if (delay > 0) return `+${delay} min delay`
-  if (delay < 0) return `${delay} min early`
-  return 'On time'
+  if (delay > 0) return t('vehicleTracker.delayed', { minutes: delay })
+  if (delay < 0) return t('vehicleTracker.early', { minutes: Math.abs(delay) })
+  return t('vehicleTracker.onTime')
 })
 
 const distanceToStop = computed(() => {
@@ -167,14 +170,14 @@ const minutesToSelectedStop = computed(() => {
 const bearingLabel = computed(() => {
   if (!vehicleData.value?.bearing) return null
   const bearing = vehicleData.value.bearing
-  if (bearing >= 337.5 || bearing < 22.5) return 'N'
-  if (bearing >= 22.5 && bearing < 67.5) return 'NE'
-  if (bearing >= 67.5 && bearing < 112.5) return 'E'
-  if (bearing >= 112.5 && bearing < 157.5) return 'SE'
-  if (bearing >= 157.5 && bearing < 202.5) return 'S'
-  if (bearing >= 202.5 && bearing < 247.5) return 'SW'
-  if (bearing >= 247.5 && bearing < 292.5) return 'W'
-  if (bearing >= 292.5 && bearing < 337.5) return 'NW'
+  if (bearing >= 337.5 || bearing < 22.5) return t('vehicleTracker.directions.n')
+  if (bearing >= 22.5 && bearing < 67.5) return t('vehicleTracker.directions.ne')
+  if (bearing >= 67.5 && bearing < 112.5) return t('vehicleTracker.directions.e')
+  if (bearing >= 112.5 && bearing < 157.5) return t('vehicleTracker.directions.se')
+  if (bearing >= 157.5 && bearing < 202.5) return t('vehicleTracker.directions.s')
+  if (bearing >= 202.5 && bearing < 247.5) return t('vehicleTracker.directions.sw')
+  if (bearing >= 247.5 && bearing < 292.5) return t('vehicleTracker.directions.w')
+  if (bearing >= 292.5 && bearing < 337.5) return t('vehicleTracker.directions.nw')
   return null
 })
 
@@ -479,10 +482,29 @@ const fetchSelectedStopArrival = async () => {
 
 // Custom vehicle icon with transport type
 const createVehicleIcon = (color, transportType) => {
+  // Normalize transport type (handle cases like "night bus", "regional bus", etc.)
+  const normalizedType = transportType?.toLowerCase().trim()
+  let vehicleCategory = 'generic'
+
+  // Determine vehicle category from transport type
+  if (normalizedType?.includes('metro') || normalizedType?.includes('subway')) {
+    vehicleCategory = 'metro'
+  } else if (normalizedType?.includes('tram') || normalizedType?.includes('streetcar')) {
+    vehicleCategory = 'tram'
+  } else if (normalizedType?.includes('bus')) {
+    vehicleCategory = 'bus'
+  } else if (normalizedType?.includes('trolley')) {
+    vehicleCategory = 'trolleybus'
+  } else if (normalizedType?.includes('train') || normalizedType?.includes('rail')) {
+    vehicleCategory = 'train'
+  } else if (normalizedType?.includes('ferry') || normalizedType?.includes('boat')) {
+    vehicleCategory = 'ferry'
+  }
+
   // Create different icons based on transport type
   let iconSvg = ''
 
-  switch (transportType) {
+  switch (vehicleCategory) {
     case 'metro':
       // Metro train icon
       iconSvg = `
@@ -818,7 +840,7 @@ const startTracking = async () => {
     // Fetch arrival time for selected stop
     await fetchSelectedStopArrival()
 
-    // Set up auto-refresh every 5 seconds
+    // Set up auto-refresh every 3 seconds
     updateTimer.value = setInterval(async () => {
       try {
         await store.fetchVehiclePosition(tripId.value)
@@ -827,11 +849,21 @@ const startTracking = async () => {
         updateRouteStopsDisplay()
         trackingError.value = null
       } catch (error) {
-        trackingError.value = 'Failed to update vehicle position'
+        // Check if it's a "not found" error
+        if (error.isNotFound || error.message === 'VEHICLE_NOT_FOUND' || store.vehicleError === 'VEHICLE_NOT_FOUND') {
+          trackingError.value = 'VEHICLE_NOT_FOUND'
+        } else {
+          trackingError.value = 'Failed to update vehicle position'
+        }
       }
-    }, 5000)
+    }, 1000)
   } catch (error) {
-    trackingError.value = error.message || 'Failed to start tracking'
+    // Check if it's a "not found" error
+    if (error.isNotFound || error.message === 'VEHICLE_NOT_FOUND' || store.vehicleError === 'VEHICLE_NOT_FOUND') {
+      trackingError.value = 'VEHICLE_NOT_FOUND'
+    } else {
+      trackingError.value = error.message || 'Failed to start tracking'
+    }
   }
 }
 
@@ -962,7 +994,7 @@ const resetView = () => {
 
 const showUserLocation = () => {
   if (!navigator.geolocation) {
-    trackingError.value = 'Geolocation is not supported by your browser'
+    trackingError.value = t('geolocation.notSupported')
     return
   }
 
@@ -991,17 +1023,17 @@ const showUserLocation = () => {
     },
     (error) => {
       locatingUser.value = false
-      let errorMsg = 'Failed to get your location'
+      let errorMsg = t('geolocation.genericError')
 
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          errorMsg = 'Location access denied. Please enable location permissions.'
+          errorMsg = t('geolocation.denied')
           break
         case error.POSITION_UNAVAILABLE:
-          errorMsg = 'Location information unavailable.'
+          errorMsg = t('geolocation.unavailable')
           break
         case error.TIMEOUT:
-          errorMsg = 'Location request timed out.'
+          errorMsg = t('geolocation.timeout')
           break
       }
 
@@ -1107,7 +1139,7 @@ onUnmounted(() => {
   <div class="tracker-container">
     <header class="tracker-header" @click="goBack" role="button" tabindex="0" title="Return to home">
       <button class="ghost back-button" @click.stop="goBack">
-        ← Back
+        {{ t('vehicleTracker.backButton') }}
       </button>
 
       <div v-if="vehicleData" class="vehicle-info">
@@ -1125,7 +1157,7 @@ onUnmounted(() => {
       </div>
 
       <div v-else class="vehicle-info">
-        <span class="loading-text">Loading vehicle data...</span>
+        <span class="loading-text">{{ t('vehicleTracker.loadingVehicle') }}</span>
       </div>
 
       <button
@@ -1167,12 +1199,12 @@ onUnmounted(() => {
         >
           <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
         </svg>
-        <span class="locate-button__text">{{ locatingUser ? 'Locating...' : 'My Location' }}</span>
+        <span class="locate-button__text">{{ locatingUser ? t('vehicleTracker.locating') : t('vehicleTracker.myLocation') }}</span>
       </button>
     </header>
 
-    <div class="tracker-content">
-      <div class="tracker-map-wrapper">
+    <div class="tracker-content" :class="{ 'tracker-content--no-data': trackingError === 'VEHICLE_NOT_FOUND' }">
+      <div v-if="trackingError !== 'VEHICLE_NOT_FOUND'" class="tracker-map-wrapper">
         <div ref="mapContainer" class="tracker-map"></div>
 
         <button
@@ -1196,130 +1228,144 @@ onUnmounted(() => {
             <circle cx="12" cy="12" r="10"></circle>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <span class="reset-view-button__text">Re-center</span>
+          <span class="reset-view-button__text">{{ t('vehicleTracker.reCenter') }}</span>
         </button>
       </div>
 
-      <aside class="tracker-sidebar">
-        <div v-if="trackingError" class="tracker-error" role="alert">
+      <aside class="tracker-sidebar" :class="{ 'tracker-sidebar--full-width': trackingError === 'VEHICLE_NOT_FOUND' }">
+        <div v-if="trackingError === 'VEHICLE_NOT_FOUND'" class="tracker-not-found" role="alert">
+          <h3>{{ t('vehicleTracker.noTrackingData') }}</h3>
+          <p>{{ t('vehicleTracker.noTrackingDataDescription') }}</p>
+          <button class="primary back-button-cta" @click="goBack">
+            {{ t('vehicleTracker.goBackToStop') }}
+          </button>
+        </div>
+
+        <div v-else-if="trackingError" class="tracker-error" role="alert">
           <p>{{ trackingError }}</p>
         </div>
 
         <div v-else-if="vehicleData" class="tracker-details">
           <div class="detail-section">
-            <h3>Status</h3>
+            <h3>{{ t('vehicleTracker.status') }}</h3>
             <p class="status-label" :class="statusBadgeClass">
               {{ statusLabel }}
             </p>
             <p v-if="vehicleData.isCanceled" class="warning-text" style="margin-top: 0.5rem;">
-              Service Canceled
+              {{ t('vehicleTracker.serviceCanceled') }}
             </p>
           </div>
 
           <div v-if="store.selectedStop && selectedStopArrivalTime" class="detail-section selected-stop-highlight">
-            <h3>Your Stop</h3>
+            <h3>{{ t('vehicleTracker.yourStop') }}</h3>
             <p class="selected-stop-name">{{ store.selectedStop.displayName }}</p>
             <div class="selected-stop-time">
               <span v-if="selectedStopTime" class="time">{{ selectedStopTime }}</span>
               <span v-if="minutesToSelectedStop !== null" class="countdown">
-                <template v-if="minutesToSelectedStop > 0">in {{ minutesToSelectedStop }} min</template>
-                <template v-else-if="minutesToSelectedStop === 0">arriving now</template>
-                <template v-else>departed {{ Math.abs(minutesToSelectedStop) }} min ago</template>
+                <template v-if="minutesToSelectedStop > 0">{{ t('vehicleTracker.time.inMinutes', { minutes: minutesToSelectedStop }) }}</template>
+                <template v-else-if="minutesToSelectedStop === 0">{{ t('vehicleTracker.time.arrivingNow') }}</template>
+                <template v-else>{{ t('vehicleTracker.time.departedAgo', { minutes: Math.abs(minutesToSelectedStop) }) }}</template>
               </span>
             </div>
           </div>
 
           <div v-if="vehicleData.lastStop && vehicleData.isTracking" class="detail-section current-stop-highlight">
-            <h3>Current Stop</h3>
-            <p class="current-stop-name">{{ currentStopName || 'Loading...' }}</p>
+            <h3>{{ t('vehicleTracker.currentStop') }}</h3>
+            <p class="current-stop-name">{{ currentStopName || t('common.loading') }}</p>
             <div class="current-stop-time">
               <span v-if="currentStopTime" class="time">{{ currentStopTime }}</span>
               <span v-if="minutesToCurrentStop !== null" class="countdown">
-                <template v-if="minutesToCurrentStop > 0">in {{ minutesToCurrentStop }} min</template>
-                <template v-else-if="minutesToCurrentStop === 0">arriving now</template>
-                <template v-else>{{ Math.abs(minutesToCurrentStop) }} min ago</template>
+                <template v-if="minutesToCurrentStop > 0">{{ t('vehicleTracker.time.inMinutes', { minutes: minutesToCurrentStop }) }}</template>
+                <template v-else-if="minutesToCurrentStop === 0">{{ t('vehicleTracker.time.arrivingNow') }}</template>
+                <template v-else>{{ t('vehicleTracker.time.ago', { minutes: Math.abs(minutesToCurrentStop) }) }}</template>
               </span>
             </div>
           </div>
 
           <div v-if="vehicleData.nextStop" class="detail-section next-stop-highlight">
-            <h3>Next Stop</h3>
-            <p class="next-stop-name">{{ nextStopName || 'Loading...' }}</p>
+            <h3>{{ t('vehicleTracker.nextStop') }}</h3>
+            <p class="next-stop-name">{{ nextStopName || t('common.loading') }}</p>
             <div class="next-stop-time">
               <span v-if="nextStopTime" class="time">{{ nextStopTime }}</span>
               <span v-if="minutesToNextStop !== null" class="countdown">
-                in {{ minutesToNextStop }} min
+                {{ t('vehicleTracker.time.inMinutes', { minutes: minutesToNextStop }) }}
               </span>
             </div>
           </div>
 
           <div v-if="transportTypeLabel || vehicleData.vehicleNumber || vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="detail-section">
-            <h3>Vehicle</h3>
+            <h3>{{ t('vehicleTracker.vehicle') }}</h3>
             <div v-if="transportTypeLabel || vehicleData.vehicleNumber" class="vehicle-info-row">
               <p v-if="transportTypeLabel" class="vehicle-type">
-                <strong>Type:</strong> {{ transportTypeLabel }}
+                <strong>{{ t('vehicleTracker.type') }}:</strong> {{ transportTypeLabel }}
               </p>
               <p v-if="vehicleData.vehicleNumber" class="vehicle-number">
-                <strong>ID:</strong> #{{ vehicleData.vehicleNumber }}
+                <strong>{{ t('vehicleTracker.id') }}:</strong> #{{ vehicleData.vehicleNumber }}
               </p>
             </div>
 
             <div v-if="vehicleData.wheelchairAccessible || vehicleData.airConditioned || vehicleData.usbChargers" class="amenities">
-              <span v-if="vehicleData.wheelchairAccessible" class="amenity-badge" title="Wheelchair Accessible">
-                ♿ Accessible
+              <span v-if="vehicleData.wheelchairAccessible" class="amenity-badge" :title="t('vehicleTracker.amenities.accessible')">
+                {{ t('vehicleTracker.amenities.accessible') }}
               </span>
-              <span v-if="vehicleData.airConditioned" class="amenity-badge" title="Air Conditioned">
-                ❄ AC
+              <span v-if="vehicleData.airConditioned" class="amenity-badge" :title="t('vehicleTracker.amenities.ac')">
+                {{ t('vehicleTracker.amenities.ac') }}
               </span>
-              <span v-if="vehicleData.usbChargers" class="amenity-badge" title="USB Chargers">
-                🔌 USB
+              <span v-if="vehicleData.usbChargers" class="amenity-badge" :title="t('vehicleTracker.amenities.usb')">
+                {{ t('vehicleTracker.amenities.usb') }}
               </span>
             </div>
           </div>
 
           <div v-if="bearingLabel || vehicleData.speed" class="detail-section">
-            <h3>Movement</h3>
+            <h3>{{ t('vehicleTracker.movement') }}</h3>
             <div class="movement-grid">
               <div v-if="bearingLabel" class="movement-item">
-                <span class="movement-label">Heading</span>
+                <span class="movement-label">{{ t('vehicleTracker.heading') }}</span>
                 <span class="movement-value">{{ bearingLabel }}</span>
               </div>
               <div v-if="vehicleData.speed" class="movement-item">
-                <span class="movement-label">Speed</span>
+                <span class="movement-label">{{ t('vehicleTracker.speed') }}</span>
                 <span class="movement-value">{{ Math.round(vehicleData.speed) }} km/h</span>
               </div>
             </div>
           </div>
 
           <div v-if="distanceToStop || distanceFromUser" class="detail-section">
-            <h3>Distance</h3>
+            <h3>{{ t('vehicleTracker.distance') }}</h3>
             <div v-if="distanceToStop" class="distance-item">
               <p class="distance-value">{{ distanceToStop }}</p>
-              <p class="caption">from {{ store.selectedStop?.displayName || 'origin stop' }}</p>
+              <p class="caption">
+                <template v-if="store.selectedStop?.displayName">
+                  {{ t('vehicleTracker.fromStop', { stop: store.selectedStop.displayName }) }}
+                </template>
+                <template v-else>
+                  {{ t('vehicleTracker.fromOriginStop') }}
+                </template>
+              </p>
             </div>
             <div v-if="distanceFromUser" class="distance-item" style="margin-top: 0.5rem">
               <p class="distance-value">{{ distanceFromUser }}</p>
-              <p class="caption">from your location</p>
+              <p class="caption">{{ t('vehicleTracker.fromYourLocation') }}</p>
             </div>
           </div>
 
           <div class="detail-section">
-            <h3>Last Update</h3>
+            <h3>{{ t('vehicleTracker.lastUpdate') }}</h3>
             <p>{{ lastUpdateLabel }}</p>
             <p v-if="!vehicleData.isTracking" class="caption warning-text" style="margin-top: 0.5rem;">
-              Real-time tracking not active
+              {{ t('vehicleTracker.trackingNotActive') }}
             </p>
           </div>
         </div>
 
         <div v-else-if="isLoading" class="tracker-placeholder">
-          <p>Locating vehicle...</p>
+          <p>{{ t('vehicleTracker.locatingVehicle') }}</p>
         </div>
 
         <div class="tracker-info">
           <p class="caption">
-            Real-time vehicle tracking powered by Golemio API.
-            Position updates every 5 seconds.
+            {{ t('vehicleTracker.footer') }}
           </p>
         </div>
       </aside>
@@ -1394,6 +1440,11 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.tracker-content--no-data {
+  justify-content: center;
+  align-items: center;
+}
+
 .tracker-map-wrapper {
   flex: 1;
   position: relative;
@@ -1465,12 +1516,59 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
+.tracker-sidebar--full-width {
+  width: 100%;
+  max-width: 600px;
+  border-left: none;
+  justify-content: center;
+}
+
 .tracker-error {
   padding: 1rem;
   background: var(--error-surface, #ff000015);
   border: 1px solid var(--error-border, #ff000033);
   border-radius: 0.5rem;
   color: var(--error-text, #ff4444);
+}
+
+.tracker-not-found {
+  padding: 1.5rem;
+  background: var(--surface-dark);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.tracker-not-found h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem 0;
+}
+
+.tracker-not-found p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 1.25rem 0;
+}
+
+.back-button-cta {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: rgba(157, 230, 122, 0.15);
+  border: 1px solid rgba(157, 230, 122, 0.3);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-button-cta:hover {
+  background: rgba(157, 230, 122, 0.25);
+  border-color: rgba(157, 230, 122, 0.5);
 }
 
 .tracker-details {
@@ -1866,6 +1964,11 @@ onUnmounted(() => {
     border-left: none;
     border-top: 1px solid var(--border-subtle);
     max-height: 50vh;
+  }
+
+  .tracker-sidebar--full-width {
+    border-top: none;
+    max-height: none;
   }
 
   .movement-grid {
