@@ -1391,6 +1391,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  flex-wrap: wrap;
 }
 
 .tracker-header:hover {
@@ -1399,6 +1400,7 @@ onUnmounted(() => {
 
 .back-button {
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .vehicle-info {
@@ -1406,6 +1408,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .loading-text {
@@ -1432,6 +1436,47 @@ onUnmounted(() => {
 
 .destination {
   color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locate-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(157, 230, 122, 0.15);
+  border: 1px solid rgba(157, 230, 122, 0.3);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.locate-button:hover {
+  background: rgba(157, 230, 122, 0.25);
+  border-color: rgba(157, 230, 122, 0.5);
+}
+
+.locate-button--loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.locate-button__text {
+  line-height: 1;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .tracker-content {
@@ -1940,6 +1985,41 @@ onUnmounted(() => {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .tracker-header {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .back-button {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .vehicle-info {
+    gap: 0.5rem;
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .locate-button {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .line-code {
+    font-size: 1rem;
+  }
+
+  .transport-type-label {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+  }
+
+  .destination {
+    flex: 1 1 100%;
+    font-size: 0.9rem;
+  }
+
   .tracker-content {
     flex-direction: column;
   }
@@ -1974,6 +2054,44 @@ onUnmounted(() => {
   .movement-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tracker-header {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .vehicle-info {
+    gap: 0.4rem;
+  }
+
+  .transport-chip {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.3rem;
+  }
+
+  .line-code {
+    font-size: 0.95rem;
+  }
+
+  .transport-type-label {
+    display: none;
+  }
+
+  .destination {
+    font-size: 0.85rem;
+  }
+
+  .locate-button__text {
+    display: none;
+  }
+
+  .locate-button {
+    padding: 0.5rem;
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
   }
 }
 </style>
