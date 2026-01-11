@@ -56,7 +56,6 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
     res.status(200).json(optimizedData);
   } catch (error) {
-    console.error('Error fetching PID stops:', error);
     res.status(500).json({ error: 'Failed to fetch stops data', message: error.message });
   }
 }
