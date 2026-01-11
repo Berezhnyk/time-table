@@ -5,25 +5,93 @@
   <!-- Homepage -->
   <url>
     <loc>https://timetable.guide/</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://timetable.guide/" />
     <xhtml:link rel="alternate" hreflang="cs" href="https://timetable.guide/" />
   </url>
 
-  <!-- Note: Individual stop pages are dynamically generated -->
-  <!-- You can add frequently accessed stops here manually or generate this dynamically -->
+  <!-- Major Prague Transport Hubs -->
 
-  <!-- Example: Major Prague transport hubs -->
-  <!-- Uncomment and add actual node IDs for major stops -->
-  <!--
+  <!-- Praha hlavni nadrazi (Main Railway Station) -->
   <url>
-    <loc>https://timetable.guide/stops/[node-id-main-station]</loc>
-    <lastmod>2025-01-19</lastmod>
+    <loc>https://timetable.guide/stops/943</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Mustek (City Center - Metro A/B interchange) -->
+  <url>
+    <loc>https://timetable.guide/stops/431</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Florenc (Bus Station - Metro B/C interchange) -->
+  <url>
+    <loc>https://timetable.guide/stops/178</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Andel (Metro B - Major hub) -->
+  <url>
+    <loc>https://timetable.guide/stops/38</loc>
+    <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
-  -->
+
+  <!-- I.P.Pavlova (Metro C) -->
+  <url>
+    <loc>https://timetable.guide/stops/310</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Muzeum (Metro A/C interchange) -->
+  <url>
+    <loc>https://timetable.guide/stops/439</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Namesti Republiky (Metro B) -->
+  <url>
+    <loc>https://timetable.guide/stops/461</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Dejvicka (Metro A - Airport connection) -->
+  <url>
+    <loc>https://timetable.guide/stops/128</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Vaclavske namesti (Wenceslas Square) -->
+  <url>
+    <loc>https://timetable.guide/stops/611</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Karlovo namesti (Charles Square - Metro B) -->
+  <url>
+    <loc>https://timetable.guide/stops/329</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
 
 </urlset>
