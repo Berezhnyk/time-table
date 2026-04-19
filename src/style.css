@@ -991,68 +991,94 @@ button:focus-visible,
 }
 
 .infotexts-container {
-  padding: 1rem;
+  padding: 0.5rem 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.4rem;
 }
 
-.infotext-alert {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 1rem;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-left: 4px solid #ffc107;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.dark .infotext-alert {
-  background: rgba(255, 193, 7, 0.15);
-  border-color: #ffc107;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.infotext-icon {
-  font-size: 1.2rem;
+.infotexts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  padding: 0.3rem 0.6rem;
+  background: transparent;
+  border: 1px dashed rgba(107, 114, 128, 0.45);
+  border-radius: 999px;
+  color: inherit;
+  opacity: 0.7;
+  font: inherit;
+  font-size: 0.78rem;
   line-height: 1;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.infotexts-toggle:hover,
+.infotexts-toggle:focus-visible {
+  opacity: 1;
+  border-color: currentColor;
+  outline: none;
+}
+
+.infotexts-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+  font-style: italic;
+  font-weight: 600;
   flex-shrink: 0;
-  color: #856404;
 }
 
-.dark .infotext-icon {
-  color: #ffc107;
+.infotexts-label {
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-.infotext-content {
-  flex: 1;
+.infotexts-chevron {
+  font-size: 0.7rem;
+  transition: transform 0.15s ease;
+}
+
+.infotexts-chevron.open {
+  transform: rotate(-180deg);
+}
+
+.infotexts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0.25rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-left: 2px solid rgba(107, 114, 128, 0.25);
+  padding-left: 0.75rem;
+  margin-left: 0.4rem;
+}
+
+.infotext-item {
+  opacity: 0.75;
 }
 
 .infotext-text {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.4;
-  color: #856404;
-  font-weight: 500;
-}
-
-.dark .infotext-text {
-  color: #ffecb3;
+  color: inherit;
 }
 
 .infotext-text-secondary {
-  margin: 0.4rem 0 0;
-  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
   line-height: 1.3;
-  color: #856404;
-  opacity: 0.85;
+  opacity: 0.7;
   font-style: italic;
-}
-
-.dark .infotext-text-secondary {
-  color: #ffe082;
 }
 
 .board-footer {

@@ -80,7 +80,8 @@
       "golemioApi": "Golemio API"
     },
     "apiKeyError": "Provide a valid token in {code} as {key}.",
-    "trackVehicle": "Track {line} to {destination}"
+    "trackVehicle": "Track {line} to {destination}",
+    "serviceNotices": "{count} service notice | {count} service notices"
   },
   "vehicleTracker": {
     "backButton": "← Back",

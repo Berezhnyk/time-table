@@ -80,7 +80,8 @@
       "golemioApi": "Golemio API"
     },
     "apiKeyError": "Вкажіть дійсний токен у {code} як {key}.",
-    "trackVehicle": "Відстежити {line} до {destination}"
+    "trackVehicle": "Відстежити {line} до {destination}",
+    "serviceNotices": "{count} службове повідомлення | {count} службові повідомлення | {count} службових повідомлень"
   },
   "vehicleTracker": {
     "backButton": "← Назад",
