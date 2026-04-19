@@ -167,28 +167,17 @@ const activeInfotexts = computed(() => {
 
   const now = new Date()
 
-  // Filter infotexts that are currently valid and relevant to this stop
+  // The Golemio API already filters infotexts server-side to the queried
+  // stop, so we only drop ones outside their validity window. `related_stops`
+  // lists stations affected by the disruption (surfaced to the rider), not
+  // the stations where the notice should appear — filtering by it hides
+  // network-wide notices like "line B trains skip stations X and Y".
   return store.infotexts.filter(infotext => {
-    // Check validity period
     const validFrom = infotext.valid_from ? new Date(infotext.valid_from) : null
     const validTo = infotext.valid_to ? new Date(infotext.valid_to) : null
 
     if (validFrom && now < validFrom) return false
     if (validTo && now > validTo) return false
-
-    // Check if it's related to the current stop (if related_stops exists)
-    if (infotext.related_stops && infotext.related_stops.length > 0 && store.selectedStop) {
-      // Check if any of the selectedStop's gtfsIds match the related stops
-      const isRelated = infotext.related_stops.some(relatedStopId => {
-        return store.selectedStop.gtfsIds?.some(gtfsId => {
-          return gtfsId === relatedStopId ||
-                 gtfsId.replace(/P$/, '') === relatedStopId ||
-                 relatedStopId.replace(/P$/, '') === gtfsId
-        })
-      })
-
-      if (!isRelated) return false
-    }
 
     return true
   })
