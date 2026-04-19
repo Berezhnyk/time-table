@@ -80,7 +80,8 @@
       "golemioApi": "Golemio API"
     },
     "apiKeyError": "Zadejte platný token v {code} jako {key}.",
-    "trackVehicle": "Sledovat {line} směr {destination}"
+    "trackVehicle": "Sledovat {line} směr {destination}",
+    "serviceNotices": "{count} provozní informace | {count} provozní informace | {count} provozních informací"
   },
   "vehicleTracker": {
     "backButton": "← Zpět",

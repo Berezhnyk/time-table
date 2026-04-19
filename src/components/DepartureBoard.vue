@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useTimetableStore } from '../stores/timetableStore'
 import { getTransportMeta, getTransportIconSvg } from '../utils/transport'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const REFRESH_INTERVAL = 5000
 const AUTO_REFRESH_KEY = 'timetable_auto_refresh'
@@ -15,6 +15,7 @@ const router = useRouter()
 const route = useRoute()
 const refreshTimer = ref(null)
 const autoRefreshEnabled = ref(false)
+const infotextsExpanded = ref(false)
 
 // Load auto-refresh preference from localStorage
 const loadAutoRefreshPreference = () => {
@@ -192,6 +193,23 @@ const activeInfotexts = computed(() => {
     return true
   })
 })
+
+const localizedInfotexts = computed(() =>
+  activeInfotexts.value.map((infotext) => {
+    const preferCzech = locale.value === 'cs'
+    const primary = preferCzech
+      ? infotext.text || infotext.text_en
+      : infotext.text_en || infotext.text
+    const secondary = preferCzech
+      ? infotext.text_en && infotext.text_en !== primary ? infotext.text_en : null
+      : infotext.text && infotext.text !== primary ? infotext.text : null
+    return { primary, secondary }
+  }).filter((item) => item.primary)
+)
+
+const toggleInfotexts = () => {
+  infotextsExpanded.value = !infotextsExpanded.value
+}
 
 function formatTime(value) {
   if (!value) {
@@ -450,23 +468,32 @@ watch(
       </div>
 
       <div v-else>
-        <!-- Display infotexts as alerts -->
-        <div v-if="activeInfotexts.length > 0" class="infotexts-container">
-          <div
-            v-for="(infotext, index) in activeInfotexts"
-            :key="index"
-            class="infotext-alert"
-            :class="{ 'infotext-inline': infotext.display_type === 'inline' }"
-            role="alert"
+        <!-- Service notices: subtle, collapsed by default -->
+        <div v-if="localizedInfotexts.length > 0" class="infotexts-container">
+          <button
+            type="button"
+            class="infotexts-toggle"
+            :aria-expanded="infotextsExpanded"
+            @click="toggleInfotexts"
           >
-            <div class="infotext-icon">⚠</div>
-            <div class="infotext-content">
-              <p class="infotext-text">{{ infotext.text_en || infotext.text }}</p>
-              <p v-if="infotext.text_en && infotext.text && infotext.text !== infotext.text_en" class="infotext-text-secondary">
-                {{ infotext.text }}
+            <span class="infotexts-icon" aria-hidden="true">i</span>
+            <span class="infotexts-label">
+              {{ t('departureBoard.serviceNotices', localizedInfotexts.length, { count: localizedInfotexts.length }) }}
+            </span>
+            <span class="infotexts-chevron" :class="{ open: infotextsExpanded }" aria-hidden="true">▾</span>
+          </button>
+          <ul v-if="infotextsExpanded" class="infotexts-list">
+            <li
+              v-for="(infotext, index) in localizedInfotexts"
+              :key="index"
+              class="infotext-item"
+            >
+              <p class="infotext-text">{{ infotext.primary }}</p>
+              <p v-if="infotext.secondary" class="infotext-text-secondary">
+                {{ infotext.secondary }}
               </p>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
 
         <div v-if="!formattedDepartures.length" class="board-placeholder">
