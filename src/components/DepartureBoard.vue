@@ -15,7 +15,8 @@ const router = useRouter()
 const route = useRoute()
 const refreshTimer = ref(null)
 const autoRefreshEnabled = ref(false)
-const infotextsExpanded = ref(false)
+const infotextsExpanded = ref(true)
+const infotextsManuallyToggled = ref(false)
 
 // Load auto-refresh preference from localStorage
 const loadAutoRefreshPreference = () => {
@@ -198,7 +199,25 @@ const localizedInfotexts = computed(() =>
 
 const toggleInfotexts = () => {
   infotextsExpanded.value = !infotextsExpanded.value
+  infotextsManuallyToggled.value = true
 }
+
+watch(
+  () => store.selectedStop?.node,
+  () => {
+    infotextsExpanded.value = true
+    infotextsManuallyToggled.value = false
+  }
+)
+
+watch(
+  () => localizedInfotexts.value.length,
+  (count, prev) => {
+    if (count > 0 && (prev === 0 || prev === undefined) && !infotextsManuallyToggled.value) {
+      infotextsExpanded.value = true
+    }
+  }
+)
 
 function formatTime(value) {
   if (!value) {
@@ -457,8 +476,7 @@ watch(
       </div>
 
       <div v-else>
-        <!-- Service notices: subtle, collapsed by default -->
-        <div v-if="localizedInfotexts.length > 0" class="infotexts-container">
+        <div v-if="localizedInfotexts.length > 0" class="infotexts-container has-notices">
           <button
             type="button"
             class="infotexts-toggle"

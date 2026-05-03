@@ -361,8 +361,14 @@ export const useTimetableStore = defineStore('timetable', {
           const departures =
             data?.departures?.map((item) => normalizeDeparture(item))?.filter(Boolean) || []
 
-          // Extract infotexts from the API response
-          const infotexts = data?.infotexts || []
+          // Extract infotexts from the API response. Field naming on the
+          // Golemio side has varied between snake_case and camelCase, so
+          // accept either to be safe.
+          const infotexts =
+            data?.infotexts ||
+            data?.info_texts ||
+            data?.infoTexts ||
+            []
 
           this.departures = departures
           this.infotexts = infotexts
