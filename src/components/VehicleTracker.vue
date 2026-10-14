@@ -32,6 +32,10 @@ const userLocation = ref(null)
 const showResetView = ref(false)
 const routeStops = ref([])
 let currentTileLayer = null
+// CARTO raster basemaps require an API key (https://carto.com/basemaps/apikey)
+const cartoKeyParam = import.meta.env.VITE_CARTO_API_KEY
+  ? `?key=${import.meta.env.VITE_CARTO_API_KEY}`
+  : ''
 let userMarker = null
 let watchId = null
 let userInteractedWithMap = false
@@ -660,7 +664,7 @@ const updateTileLayer = () => {
 
   // Add tile layer - use dark tiles if in dark mode
   const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`
     : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 
   const attribution = isDark

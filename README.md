@@ -23,6 +23,9 @@ VITE_GOLEMIO_API_KEY=your_token_here
 VITE_GOLEMIO_API_URL=https://api.golemio.cz/v2/pid
 # optional override for the stop list endpoint
 VITE_STOPS_API_URL=https://data.pid.cz/stops/json/stops.json
+
+# Required for map tiles (free key from https://carto.com/basemaps/apikey)
+VITE_CARTO_API_KEY=your_carto_key_here
 ```
 
 > You can request a free PID/Golemio API key through the contacts listed on [pid.cz/en/opendata](https://pid.cz/en/opendata/).
