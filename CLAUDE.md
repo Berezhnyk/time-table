@@ -102,9 +102,12 @@ VITE_GOLEMIO_API_KEY=your_token_here
 # Optional: API URL overrides
 VITE_GOLEMIO_API_URL=https://api.golemio.cz/v2/pid
 VITE_STOPS_API_URL=https://data.pid.cz/stops/json/stops.json
+
+# Required for map tiles (free key from https://carto.com/basemaps/apikey)
+VITE_CARTO_API_KEY=your_carto_key_here
 ```
 
-**Note**: The API key is only needed in development. In production (Vercel), the `GOLEMIO_API_KEY` environment variable is injected server-side by the serverless functions.
+**Note**: The Golemio key is only needed in development. In production (Vercel), the `GOLEMIO_API_KEY` environment variable is injected server-side by the serverless functions. `VITE_CARTO_API_KEY` is different: it is needed in production too, and it is intentionally public, since the browser requests tiles from CARTO with `?key=` in the URL.
 
 ## Key Architecture Patterns
 
